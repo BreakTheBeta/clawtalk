@@ -26,7 +26,7 @@ Talk theme:
   - operator lessons / guardrails / real-world use
   - Fraser example material if it helps as a case study
 - Include a README with local dev/build instructions.
-- Include a short DEPLOY.md explaining what would need to happen to host it at `howtoopenclaw.islinuxdown.com`.
+- Include a short `docs/deploy.md` explaining what would need to happen to host it at `howtoopenclaw.islinuxdown.com`.
 
 ## Constraints
 - Do not assume the domain is already configured locally.

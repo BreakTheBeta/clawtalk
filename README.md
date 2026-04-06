@@ -1,39 +1,37 @@
 # Productionising OpenClaw Slides
 
-Slide deck website for Will's 2026-04-09 talk, built as a conventional React + Vite + Tailwind app.
+Static slide deck for Will's 2026-04-09 talk, built with React, Vite, and Tailwind CSS.
 
 ## Requirements
 
 - Node.js 22+
 - npm 10+
 
-## Local development
+## Commands
 
 ```bash
 npm install
 npm run dev
-```
-
-Vite will print a local URL, typically `http://localhost:5173`.
-
-## Build for production
-
-```bash
+npm run check
 npm run build
+npm run verify
 ```
 
-The static output is written to `dist/`.
-
-## Speaker notes
-
-- Talk notes live in `SPEAKER_NOTES.md`.
-- The visible deck is intentionally lean; use the notes file for the richer talk track.
+`npm run benchmark:bg` is optional. It saves its screenshot output under `artifacts/`.
 
 ## Project structure
 
-- `index.html`: single HTML shell
-- `src/main.jsx`: React root entry
-- `src/App.jsx`: app tree, deck navigation, transitions, fullscreen behavior
-- `src/slides.js`: canonical slide data and background scene targets
-- `src/index.css`: Tailwind import and deck-specific styling
-- `SPEAKER_NOTES.md`: expanded speaking notes and talk track
+- `src/`: app code, slide data, canvas background renderer, and safety check
+- `docs/`: speaker notes, deployment notes, reference images, and archived planning docs
+- `scripts/`: local utility scripts
+
+## Editing notes
+
+- Slide content lives in `src/slides.js`.
+- The interactive deck shell lives in `src/App.jsx`.
+- The animated background renderer lives in `src/backgroundRenderer.js`.
+- Speaker notes live in `docs/speaker-notes.md`.
+
+## Output
+
+Production assets are built into `dist/`, which is ignored from git.

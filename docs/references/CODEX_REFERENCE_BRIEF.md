@@ -2,11 +2,11 @@
 
 Use the actual image files in this directory as direct visual targets:
 
-- `refs/ref-1.jpg`
-- `refs/ref-2.jpg`
-- `refs/ref-3.jpg`
-- `refs/ref-4.jpg`
-- `refs/ref-5.jpg`
+- `docs/references/ref-1.jpg`
+- `docs/references/ref-2.jpg`
+- `docs/references/ref-3.jpg`
+- `docs/references/ref-4.jpg`
+- `docs/references/ref-5.jpg`
 
 ## Non-negotiable
 

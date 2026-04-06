@@ -1,7 +1,13 @@
+import { mkdir } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
 const baseUrl = process.env.BACKGROUND_BENCH_URL ?? 'http://127.0.0.1:4173/';
+const outputDir = new URL('../artifacts/', import.meta.url);
+const screenshotPath = new URL('./benchmark-background.png', outputDir);
 const slideSequence = [1, 4, 8, 12, 14];
+
+await mkdir(outputDir, { recursive: true });
 
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -17,7 +23,7 @@ for (const slide of slideSequence) {
   results.push({ slide, stats: await collect(slide) });
 }
 
-await page.screenshot({ path: 'benchmark-background.png', fullPage: true });
+await page.screenshot({ path: fileURLToPath(screenshotPath), fullPage: true });
 await browser.close();
 
 const frameValues = results.map((entry) => entry.stats?.avgFrameMs ?? 0).filter(Boolean);
