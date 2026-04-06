@@ -1,0 +1,32 @@
+{
+  "name": "openclaw-talk-slides",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Slide deck website for the Productionising OpenClaw talk.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "node src/safety-check.mjs",
+    "verify": "npm run check && npm run build",
+    "benchmark:bg": "node scripts/benchmark-background.mjs"
+  },
+  "keywords": [
+    "slides",
+    "react",
+    "openclaw"
+  ],
+  "author": "Codex",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "vite": "^8.0.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@tailwindcss/vite": "^4.2.2",
+    "tailwindcss": "^4.2.2"
+  }
+}
