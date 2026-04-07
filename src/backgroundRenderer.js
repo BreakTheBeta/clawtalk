@@ -1,94 +1,567 @@
 const tau = Math.PI * 2;
-
-const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-const lerp = (start, end, amount) => start + (end - start) * amount;
-const mixColor = (from, to, amount) => from.map((value, index) => lerp(value, to[index], amount));
-const scaleColor = (rgb, factor) => rgb.map((value) => clamp(value * factor, 0, 255));
-const smoothstep = (edge0, edge1, value) => {
-  const t = clamp((value - edge0) / Math.max(0.0001, edge1 - edge0), 0, 1);
-  return t * t * (3 - 2 * t);
-};
-const smootherstep = (edge0, edge1, value) => {
-  const t = clamp((value - edge0) / Math.max(0.0001, edge1 - edge0), 0, 1);
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const mixColor = (a, b, t) => a.map((v, i) => lerp(v, b[i], t));
+const scaleColor = (rgb, f) => rgb.map((v) => clamp(v * f, 0, 255));
+const smootherstep = (e0, e1, x) => {
+  const t = clamp((x - e0) / Math.max(0.0001, e1 - e0), 0, 1);
   return t * t * t * (t * (t * 6 - 15) + 10);
 };
-const toRgba = (rgb, alpha) => `rgba(${rgb.map((value) => Math.round(value)).join(', ')}, ${clamp(alpha, 0, 1)})`;
-const calmPulse = (value) => clamp((value ?? 0) * 0.42, 0, 1);
+const calmPulse = (v) => clamp((v ?? 0) * 0.42, 0, 1);
 
-function withAlpha(context, alpha, draw) {
-  if (alpha <= 0.0015) return;
-  context.save();
-  context.globalAlpha *= clamp(alpha, 0, 1);
-  draw();
-  context.restore();
+/* ── GLSL sources ─────────────────────────────────────────────── */
+
+const VERT = `#version 300 es
+in vec2 a_pos;
+out vec2 v_uv;
+void main(){
+  v_uv = a_pos * 0.5 + 0.5;
+  gl_Position = vec4(a_pos, 0.0, 1.0);
+}`;
+
+const FRAG = `#version 300 es
+precision highp float;
+
+in vec2 v_uv;
+out vec4 o_color;
+
+uniform vec2 u_res;
+uniform float u_time;
+
+// palette (0-1)
+uniform vec3 u_base;
+uniform vec3 u_ambient;
+uniform vec3 u_edge;
+uniform vec3 u_warning;
+
+// light
+uniform vec2 u_lightPos;
+uniform float u_lightRadius;
+
+// derived sliders
+uniform float u_deckProgress;
+uniform float u_specimenBias;
+uniform float u_commandBias;
+uniform float u_contourBias;
+uniform float u_latticeBias;
+uniform float u_warningBias;
+uniform float u_scanBias;
+uniform float u_radialBias;
+uniform float u_fieldWarp;
+uniform float u_density;
+uniform float u_readMask;
+uniform float u_pulse;
+uniform float u_driftA;
+uniform float u_driftB;
+uniform float u_driftC;
+uniform float u_driftD;
+
+// system params
+uniform float u_beamTilt;
+uniform float u_horizon;
+uniform float u_aperture;
+uniform float u_reticleBias;
+uniform float u_phase;
+
+#define PI  3.14159265359
+#define TAU 6.28318530718
+
+/* ── helpers ──────────────────────────────────────────────────── */
+
+float hash(float n){ return fract(sin(n*12.9898)*43758.5453); }
+float hash2(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453); }
+
+float lineSDF(float pos, float target, float w){
+  return smoothstep(w, 0.0, abs(pos - target));
 }
 
-function pseudoNoise(seed) {
-  const value = Math.sin(seed * 12.9898) * 43758.5453;
-  return value - Math.floor(value);
+float boxBorder(vec2 uv, vec2 lo, vec2 hi, float w){
+  vec2 c = (lo + hi) * 0.5;
+  vec2 h = (hi - lo) * 0.5;
+  vec2 d = abs(uv - c) - h;
+  float dist = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+  return smoothstep(w, 0.0, abs(dist));
 }
 
-function buildGeometry(width, height, quality) {
-  const gridColumns = [];
-  const gridRows = [];
-  const specimenNodes = [];
-  const frameTicks = [];
-  const crossMarkers = [];
-
-  const columnCount = Math.max(8, Math.round((9 + width / 220) * quality));
-  const rowCount = Math.max(9, Math.round((10 + height / 120) * quality));
-  const specimenCount = Math.max(42, Math.round((56 + height / 18) * quality));
-  const tickCount = Math.max(14, Math.round((18 + width / 120) * quality));
-
-  for (let index = 0; index < columnCount; index += 1) {
-    const t = index / Math.max(1, columnCount - 1);
-    gridColumns.push({
-      t,
-      x: lerp(0.18, 0.95, t),
-      weight: index % 3 === 0 ? 1.3 : 1,
-      phase: pseudoNoise(index + 7),
-    });
-  }
-
-  for (let index = 0; index < rowCount; index += 1) {
-    const t = index / Math.max(1, rowCount - 1);
-    gridRows.push({
-      t,
-      y: lerp(0.08, 0.94, t),
-      weight: index % 4 === 0 ? 1.2 : 1,
-      phase: pseudoNoise(index + 43),
-    });
-  }
-
-  for (let index = 0; index < specimenCount; index += 1) {
-    const t = index / Math.max(1, specimenCount - 1);
-    specimenNodes.push({
-      t,
-      envelope: Math.sin(t * Math.PI) ** 0.65,
-      noise: pseudoNoise(index * 0.73 + 15),
-      curve: Math.sin(t * tau * 1.7 + 0.2),
-    });
-  }
-
-  for (let index = 0; index <= tickCount; index += 1) {
-    const t = index / Math.max(1, tickCount);
-    frameTicks.push({
-      t,
-      weight: index % 3 === 0 ? 1 : 0.55,
-    });
-  }
-
-  const crossCols = [0.17, 0.34, 0.5, 0.66, 0.83];
-  const crossRows = [0.22, 0.5, 0.78];
-  crossRows.forEach((y, row) => {
-    crossCols.forEach((x, col) => {
-      if (row === 1 && col === 2) return;
-      crossMarkers.push({ x, y, label: `${['a', 'b', 'g'][row]}${col - 2 >= 0 ? '+' : ''}${col - 2}` });
-    });
-  });
-
-  return { gridColumns, gridRows, specimenNodes, frameTicks, crossMarkers };
+float boxFill(vec2 uv, vec2 lo, vec2 hi){
+  return step(lo.x, uv.x)*step(uv.x, hi.x)*step(lo.y, uv.y)*step(uv.y, hi.y);
 }
+
+/* ── main ─────────────────────────────────────────────────────── */
+
+void main(){
+  vec2 uv = v_uv;
+  // flip so y=0 is top (matches Canvas 2D convention used by scene data)
+  uv.y = 1.0 - uv.y;
+
+  vec2 px = 1.0 / u_res;
+  float aspect = u_res.x / u_res.y;
+  float t = u_time;
+
+  vec3 c = vec3(0.0);
+
+  // ── 1. BACKGROUND + BLOOM ──────────────────────────────────
+  c = u_base * 0.12;
+
+  // radial bloom from light source
+  vec2 lp = u_lightPos;
+  float dL = length((uv - lp) * vec2(aspect, 1.0));
+  float bR = 0.42 + u_lightRadius * 0.36;
+  float bloom = exp(-dL*dL / (bR*bR*0.5));
+  c += u_warning * bloom * (0.11 + u_warningBias*0.08);
+  c += u_edge    * bloom * 0.6 * (0.09 + u_contourBias*0.07);
+  c += u_ambient * bloom * 0.3 * (0.06 + u_latticeBias*0.06);
+
+  // side glows
+  c += u_warning * smoothstep(0.24, 0.0, uv.x)  * (0.10 + u_warningBias*0.06);
+  c += u_ambient * smoothstep(0.78, 1.0, uv.x)  * (0.08 + u_contourBias*0.05);
+
+  // top / bottom bands
+  c += mix(u_warning, u_edge, uv.x) * smoothstep(0.09, 0.0, uv.y) * 0.06;
+  c += u_ambient * smoothstep(0.91, 1.0, uv.y) * 0.08;
+
+  // animated sweep line
+  float sweepX = 0.1 + mod(t*0.018 + u_driftA*0.04 + u_deckProgress*0.3, 0.82);
+  float sweep = exp(-pow((uv.x - sweepX) / 0.09, 2.0));
+  c += u_warning * sweep * (0.05 + u_scanBias*0.04)
+       * step(0.04, uv.y) * step(uv.y, 0.96);
+
+  // ── 2. SCANLINES ───────────────────────────────────────────
+  float scanStep = max(4.0, u_res.y / (78.0 + u_density*28.0));
+  float scanY = mod(gl_FragCoord.y, scanStep);
+  c += vec3(smoothstep(1.0, 0.0, scanY) * (0.018 + u_scanBias*0.018));
+
+  // sparse heavy horizontal lines
+  float hStep = 1.0 / (10.0 + u_density*4.0);
+  float hDist = mod(uv.y + 0.001, hStep);
+  float hLine = smoothstep(px.y*1.5, 0.0, min(hDist, hStep - hDist));
+  c += u_edge * hLine * (0.028 + u_contourBias*0.015)
+       * step(0.08, uv.x) * step(uv.x, 0.92);
+
+  // ── 3. VERTICAL GRID LINES (with warp) ─────────────────────
+  float vCount = 9.0 + u_density*4.0;
+  for(float i=0.0; i<16.0; i++){
+    if(i >= vCount) break;
+    float gt = i / max(1.0, vCount - 1.0);
+    float gx = mix(0.18, 0.95, gt);
+    float ph = hash(i + 7.0);
+    float warp = sin(t*0.22 + ph*TAU + u_fieldWarp*2.4) * 0.008 * u_fieldWarp;
+    float xp = gx + warp*(1.0 - 2.0*uv.y);
+    float lw = px.x * (mod(i,3.0)<0.5 ? 1.8 : 1.2);
+    float vL = smoothstep(lw, 0.0, abs(uv.x - xp));
+    vec3 lc = mod(i,3.0)<0.5
+      ? u_warning * (0.14 + u_warningBias*0.10)
+      : u_ambient * (0.08 + u_latticeBias*0.10);
+    c += lc * vL * step(0.06, uv.y) * step(uv.y, 0.94);
+  }
+
+  // ── 4. HORIZONTAL GRID ROWS (with pinch warp) ──────────────
+  float hCount = 10.0 + u_density*4.0;
+  for(float i=0.0; i<18.0; i++){
+    if(i >= hCount) break;
+    float rt = i / max(1.0, hCount - 1.0);
+    float ry = mix(0.08, 0.94, rt);
+    float ph = hash(i + 43.0);
+    float u_l = clamp((uv.x - 0.08)/0.87, 0.0, 1.0);
+    float warp = sin(u_l*TAU*(0.8 + u_fieldWarp*1.6) + t*0.14 + ph*TAU)
+                 * 0.01 * u_fieldWarp;
+    float pinch = exp(-abs(u_l - 0.55)*(7.0 - u_contourBias*2.0));
+    float rowY = ry + warp*pinch;
+    float rAlpha = 0.065 + (1.0 - rt)*0.07 + u_scanBias*0.04;
+    vec3 rc = mod(i,4.0)<0.5 ? u_warning : u_ambient;
+    c += rc * rAlpha * smoothstep(px.y*1.5, 0.0, abs(uv.y - rowY))
+         * step(0.08, uv.x) * step(uv.x, 0.95);
+  }
+
+  // ── 5. OUTER FRAME ─────────────────────────────────────────
+  c += u_ambient * boxBorder(uv, vec2(0.04,0.045), vec2(0.96,0.935), px.x*1.8) * 0.48;
+
+  // ── 6. FIELD CONTOURS (ref-3 style) ─────────────────────────
+  {
+    float fcx = 0.52 + (u_beamTilt - 0.5)*0.18 + u_driftB*0.02;
+    float fcy = 0.50 + (u_horizon  - 0.5)*0.12 + u_driftC*0.015;
+    float spX = 0.18 + u_aperture*0.23;
+    float spY = 0.12 + u_specimenBias*0.1 + u_radialBias*0.08;
+
+    float nContours = 10.0 + u_contourBias*10.0 + u_radialBias*3.0;
+    for(float i=0.0; i<24.0; i++){
+      if(i >= nContours) break;
+      float ct = i / max(1.0, nContours - 1.0);
+      float spread = 0.52 + ct*(1.8 + u_contourBias*0.8);
+
+      float dx = (uv.x - fcx) / max(0.001, spX);
+      float ul = clamp(dx*0.5 + 0.5, 0.0, 1.0);
+      float pinch = 1.0 - exp(-abs(dx)*(5.0 + u_specimenBias*5.0));
+      float wave = sin(ul*TAU*(1.2 + u_fieldWarp*1.4) + t*0.24 + i*0.18) * 0.02;
+      float drift = sin(t*0.12 + ul*TAU*0.6 + i*0.4) * 0.008;
+      float lineY = fcy + (ct - 0.5)*spY*spread
+                   + wave*pinch*0.34 + drift*(1.0 - pinch);
+
+      float d = abs(uv.y - lineY);
+      float la = smoothstep(px.y*2.0, 0.0, d);
+      vec3 lc = ct<0.4 ? u_ambient : ct<0.72 ? u_warning : u_edge;
+      c += lc * la * (0.14 + (1.0 - ct)*0.24) * 0.84;
+    }
+  }
+
+  // ── 7. SPECIMEN COLUMN (ref-1/4 style) ──────────────────────
+  {
+    float colX  = 0.49 + (u_beamTilt - 0.5)*0.08;
+    float colT  = 0.11;
+    float colB  = 0.88;
+    float colW  = 0.082 + u_specimenBias*0.03 + u_commandBias*0.018;
+    float colH  = colB - colT;
+    float lineA = 0.30 + u_specimenBias*0.24;
+
+    // column border
+    c += u_warning * boxBorder(uv,
+         vec2(colX - colW*0.5, colT),
+         vec2(colX + colW*0.5, colB), px.x*1.5) * lineA;
+
+    // center axis
+    float inCol = step(colT - 0.02, uv.y)*step(uv.y, colB + 0.02);
+    c += u_ambient * lineSDF(uv.x, colX, px.x*1.5) * inCol
+         * (0.20 + u_latticeBias*0.14);
+
+    // dashed center axis
+    float dashPhase = mod(uv.y*80.0, 2.0);
+    c += u_ambient * lineSDF(uv.x, colX, px.x*1.0) * inCol
+         * step(1.0, dashPhase) * (0.10 + u_latticeBias*0.08);
+
+    // oscillating traces
+    float trCnt = 3.0 + u_specimenBias*3.0;
+    float nodeT = (uv.y - colT) / colH;
+    float inNode = step(0.0, nodeT)*step(nodeT, 1.0);
+
+    for(float tr=0.0; tr<6.0; tr++){
+      if(tr >= trCnt) break;
+      float off = (tr - (trCnt-1.0)*0.5) / max(1.0, trCnt - 1.0);
+      float env = pow(max(0.0, sin(nodeT*PI)), 0.65);
+      float nv  = hash(floor(nodeT*60.0)*0.73 + 15.0 + tr*3.7);
+      float wobble = sin(nodeT*TAU*(6.5 + u_scanBias*3.2) + t*(0.62 + tr*0.05) + nv*4.0)*0.22;
+      float inner  = sin(nodeT*TAU*(14.0 + u_contourBias*7.0) - t*0.35 + tr*0.8)*0.08*env;
+      float trX = colX + (wobble + inner + off*0.11)*colW;
+      float trLine = smoothstep(px.x*2.5, 0.0, abs(uv.x - trX));
+      vec3 trCol = tr >= trCnt - 1.0 ? u_warning : u_edge;
+      c += trCol * trLine * (lineA - tr*0.03) * inNode;
+    }
+
+    // blob particles (cell-based, O(1))
+    float blobCnt = 20.0 + u_specimenBias*22.0;
+    float cellH = colH / blobCnt;
+    float cellIdx = floor((uv.y - colT) / cellH);
+    float cellFrac = fract((uv.y - colT) / cellH);
+    if(cellIdx >= 0.0 && cellIdx < blobCnt){
+      float bt = cellIdx / max(1.0, blobCnt - 1.0);
+      float bx = colX + sin(bt*TAU*7.0 + t*0.8 + cellIdx)*colW*0.18;
+      float bw = (0.22 + hash(cellIdx*1.9 + floor(t*7.0))*0.58)*colW*0.56;
+      float bh = max(2.0*px.y, 0.006);
+      float inBlob = step(abs(uv.x - bx), bw*0.5)
+                   * step(abs(cellFrac*cellH - cellH*0.5), bh*0.5);
+      c += u_warning * inBlob * (0.15 + u_warningBias*0.08);
+    }
+
+    // right-side emanating wave
+    float wStart = colX + colW*0.52;
+    float wEnd   = 0.93;
+    if(uv.x > wStart && uv.x < wEnd){
+      float wt = (uv.x - wStart)/(wEnd - wStart);
+      float wEnv = pow(sin(wt*PI), 0.82);
+      float waveY = 0.28 + wt*0.48
+        + sin(wt*TAU*(2.0 + u_fieldWarp*0.8) + t*0.46)*0.06*wEnv
+        + sin(wt*TAU*8.0 - t*0.22)*0.012*wEnv;
+      c += u_warning * smoothstep(px.y*2.5, 0.0, abs(uv.y - waveY))
+           * (0.48 + u_warningBias*0.20);
+    }
+
+    // left-side exponential curve (ref-4)
+    float curveStart = colX - colW*0.52;
+    if(uv.x > 0.07 && uv.x < curveStart){
+      float ct2 = (uv.x - 0.07)/(curveStart - 0.07);
+      float curveY = colB - (1.0 - exp(-ct2*3.5))*(colH*0.92);
+      c += u_warning * smoothstep(px.y*2.0, 0.0, abs(uv.y - curveY))
+           * (0.36 + u_warningBias*0.14) * u_specimenBias;
+    }
+  }
+
+  // ── 8. COMMAND SYSTEM (ref-2/5 arcs + spokes) ──────────────
+  {
+    vec2 cmdC = vec2(0.68 + u_radialBias*0.08 + u_driftA*0.015,
+                     0.46 + (u_reticleBias - 0.4)*0.16 + u_driftB*0.012);
+    float bR = min(1.0/aspect, 1.0)*(0.12 + u_commandBias*0.08 + u_radialBias*0.04);
+
+    vec2 dp = (uv - cmdC)*vec2(aspect, 1.0);
+    float dist = length(dp);
+    float ang  = atan(dp.y, dp.x);
+
+    // glow
+    float glow = exp(-dist*dist/(bR*bR*4.0));
+    c += u_warning * glow * (0.06 + u_commandBias*0.05);
+    c += u_edge    * glow * 0.6 * (0.06 + u_contourBias*0.06);
+
+    // rings
+    float ringCnt = 4.0 + u_radialBias*5.0;
+    float arcSpan = PI*(0.72 + u_radialBias*0.18);
+    float arcStart = -PI*0.82 + sin(t*0.18 + u_driftC)*0.12;
+    for(float r=0.0; r<10.0; r++){
+      if(r >= ringCnt) break;
+      float rt = r / max(1.0, ringCnt - 1.0);
+      float radius = bR*(0.62 + rt*1.9);
+      float rLine = smoothstep(px.x*2.0, 0.0, abs(dist - radius));
+
+      // segment gaps
+      float segN = 10.0 + r*2.0 + u_commandBias*4.0;
+      float segAng = mod(ang - arcStart + TAU, TAU);
+      rLine *= step(segAng, arcSpan);
+      float segPh = segAng/arcSpan*segN;
+      rLine *= smoothstep(0.0, 0.15, fract(segPh))
+             * smoothstep(1.0, 0.85, fract(segPh));
+
+      vec3 rc = mod(r,3.0)<0.5 ? u_warning
+              : mod(r,2.0)<0.5 ? u_ambient : u_edge;
+      c += rc * rLine * (0.24 + (1.0 - rt)*0.34);
+    }
+
+    // spokes
+    float spCnt = 8.0 + u_commandBias*6.0;
+    for(float s=0.0; s<16.0; s++){
+      if(s >= spCnt) break;
+      float sAng = -PI*0.5 + s/spCnt*TAU + sin(t*0.24+s)*0.012;
+      float aDist = abs(mod(ang - sAng + PI, TAU) - PI);
+      float spLine = smoothstep(px.x*2.5/max(0.01,dist), 0.0, aDist);
+      spLine *= step(bR*0.44, dist)*step(dist, bR*(2.05+u_radialBias*0.66));
+      c += u_ambient * spLine * (0.34 + u_commandBias*0.20);
+    }
+
+    // crosshair
+    float crH = smoothstep(px.y*2.0,0.0,abs(dp.y))*step(abs(dp.x),bR*0.28);
+    float crV = smoothstep(px.x*2.0,0.0,abs(dp.x))*step(abs(dp.y),bR*0.28);
+    c += u_warning*(crH+crV)*(0.66 + u_warningBias*0.18);
+
+    // rotating wedge
+    float wAng = -PI*0.5 + sin(t*0.3 + u_deckProgress*TAU)*0.1;
+    float wDist = abs(mod(ang - wAng + PI, TAU) - PI);
+    c += u_warning * step(wDist,0.12)*step(dist, bR*(1.8+u_radialBias*0.5))
+         * (0.085 + u_warningBias*0.05);
+
+    // info boxes near command center
+    float boxH = 0.042;
+    float boxW = bR*0.7/aspect;
+
+    vec2 lb0 = cmdC + vec2(-bR*1.92/aspect, -bR*2.22);
+    vec2 lb1 = lb0 + vec2(boxW, boxH);
+    float lbF = boxFill(uv, lb0, lb1);
+    c = mix(c, vec3(0.04,0.024,0.008), lbF*0.72);
+    c += u_warning * boxBorder(uv, lb0, lb1, px.x*1.5) * 0.82;
+
+    vec2 rb0 = cmdC + vec2(bR*0.68/aspect, -bR*2.22);
+    vec2 rb1 = rb0 + vec2(boxW, boxH);
+    float rbF = boxFill(uv, rb0, rb1);
+    c = mix(c, vec3(0.04,0.024,0.008), rbF*0.72);
+    c += u_warning * boxBorder(uv, rb0, rb1, px.x*1.5) * 0.82;
+  }
+
+  // ── 9. CROSS MARKERS (ref-5 style) ─────────────────────────
+  {
+    float cSpX = 0.165;  // (0.83-0.17)/4
+    float cSpY = 0.28;   // (0.78-0.22)/2
+    float arm  = 0.018;
+
+    // nearest marker via rounding
+    float nX = clamp(round((uv.x - 0.17)/cSpX)*cSpX + 0.17, 0.17, 0.83);
+    float nY = clamp(round((uv.y - 0.22)/cSpY)*cSpY + 0.22, 0.22, 0.78);
+    // skip center (0.5, 0.5)
+    float isCenter = step(abs(nX-0.5),0.01)*step(abs(nY-0.5),0.01);
+
+    vec2 md = abs(uv - vec2(nX, nY));
+    float crH = step(md.y, px.y*1.5)*step(md.x, arm);
+    float crV = step(md.x, px.x*1.5)*step(md.y, arm);
+    c += u_warning*(crH+crV)*0.46*(1.0 - isCenter);
+  }
+
+  // ── 10. INTERFERENCE OVALS (ref-5 center pattern) ──────────
+  {
+    vec2 oc = vec2(0.50, 0.48);
+    float od = length((uv - oc)*vec2(aspect*0.6, 1.0));
+    float ovals = abs(sin(od*28.0 + t*0.15))*smoothstep(0.28,0.0,od);
+    c += u_ambient * ovals * 0.08 * u_radialBias;
+  }
+
+  // ── 11. SMALL ORBS (ref-1 planetary bodies) ────────────────
+  {
+    vec2 orb1 = vec2(0.24, 0.38 + sin(t*0.08)*0.01);
+    vec2 orb2 = vec2(0.22, 0.72 + sin(t*0.06+1.0)*0.01);
+    float o1 = smoothstep(0.018,0.012, length((uv-orb1)*vec2(aspect,1.0)));
+    float o2 = smoothstep(0.014,0.009, length((uv-orb2)*vec2(aspect,1.0)));
+    c += u_warning * o1 * 0.35 * u_specimenBias;
+    c += mix(u_warning, u_ambient, 0.5) * o2 * 0.30 * u_specimenBias;
+  }
+
+  // ── 12. TELEMETRY HUD ──────────────────────────────────────
+  // top/bottom rule lines
+  float topY = 0.08;
+  float botY = 0.92;
+  c += u_ambient * smoothstep(px.y*1.5,0.0,abs(uv.y-topY))
+       * step(0.05,uv.x)*step(uv.x,0.95) * 0.62;
+  c += u_ambient * smoothstep(px.y*1.5,0.0,abs(uv.y-botY))
+       * step(0.05,uv.x)*step(uv.x,0.95) * 0.62;
+
+  // tick marks along top/bottom
+  {
+    float tickCnt = 18.0;
+    float tickT = (uv.x - 0.05)/0.9;
+    float nearTick = round(tickT*tickCnt)/tickCnt;
+    float tickDist = abs(tickT - nearTick);
+    float isMajor = step(mod(round(tickT*tickCnt),3.0), 0.5);
+    float tickH = mix(0.008, 0.015, isMajor);
+
+    float topTick = step(tickDist*0.9, px.x*1.5)
+                  * step(topY, uv.y)*step(uv.y, topY + tickH);
+    float botTick = step(tickDist*0.9, px.x*1.5)
+                  * step(botY - tickH, uv.y)*step(uv.y, botY);
+    c += u_ambient * (topTick + botTick) * 0.62;
+  }
+
+  // left ruler ticks
+  {
+    float rulerX = 0.035;
+    float rulerStep = (botY - topY)/12.0;
+    float rulerT = (uv.y - topY)/rulerStep;
+    float nearR = round(rulerT);
+    float rDist = abs(rulerT - nearR);
+    float rMajor = step(mod(nearR,3.0), 0.5);
+    float tickW = mix(0.012, 0.022, rMajor);
+
+    float rTick = step(rDist*rulerStep, px.y*1.5)
+                * step(rulerX, uv.x)*step(uv.x, rulerX + tickW)
+                * step(topY, uv.y)*step(uv.y, botY);
+    c += u_ambient * rTick * 0.72;
+
+    // small number-like marks next to major ticks
+    float numMark = step(rDist*rulerStep, px.y*1.2) * rMajor
+                  * step(rulerX + tickW + 0.004, uv.x)
+                  * step(uv.x, rulerX + tickW + 0.024)
+                  * step(topY, uv.y)*step(uv.y, botY);
+    c += u_warning * numMark * 0.45;
+  }
+
+  // top info boxes (dark-filled + orange border, ref-1 style)
+  {
+    // left box
+    vec2 tlb0 = vec2(0.07, 0.03);
+    vec2 tlb1 = vec2(0.32, 0.094);
+    float tlbF = boxFill(uv, tlb0, tlb1);
+    c = mix(c, vec3(0.04,0.024,0.008), tlbF*0.72);
+    c += u_warning * boxBorder(uv, tlb0, tlb1, px.x*1.2) * 0.84;
+
+    // simulated text lines inside
+    float tl1 = step(tlb0.x+0.012, uv.x)*step(uv.x, tlb1.x-0.04)
+              * step(abs(uv.y - 0.055), px.y*1.0);
+    float tl2 = step(tlb0.x+0.012, uv.x)*step(uv.x, tlb1.x-0.08)
+              * step(abs(uv.y - 0.077), px.y*1.0);
+    c += u_warning * (tl1*0.7 + tl2*0.5);
+
+    // right box
+    vec2 trb0 = vec2(0.74, 0.03);
+    vec2 trb1 = vec2(0.93, 0.094);
+    float trbF = boxFill(uv, trb0, trb1);
+    c = mix(c, vec3(0.04,0.024,0.008), trbF*0.72);
+    c += u_warning * boxBorder(uv, trb0, trb1, px.x*1.2) * 0.84;
+
+    float tr1 = step(trb0.x+0.012, uv.x)*step(uv.x, trb1.x-0.02)
+              * step(abs(uv.y - 0.055), px.y*1.0);
+    float tr2 = step(trb0.x+0.012, uv.x)*step(uv.x, trb1.x-0.06)
+              * step(abs(uv.y - 0.077), px.y*1.0);
+    c += u_warning * (tr1*0.7 + tr2*0.5);
+  }
+
+  // status bands near top (ref-5 AT FIELD bands)
+  {
+    float bandY = 0.11;
+    float bandH = 0.045;
+    float bandW = 0.125;
+    for(float i=0.0; i<5.0; i++){
+      float bx = 0.07 + i*(bandW + 0.012);
+      vec2 b0 = vec2(bx, bandY);
+      vec2 b1 = vec2(bx + bandW, bandY + bandH);
+      float bF = boxFill(uv, b0, b1);
+      c = mix(c, vec3(0.04,0.024,0.008), bF*0.64);
+      c += u_warning * boxBorder(uv, b0, b1, px.x*1.0)
+           * (0.82 - i*0.04);
+      // text line inside
+      float tl = step(b0.x+0.006, uv.x)*step(uv.x, b1.x-0.01)
+               * step(abs(uv.y - (bandY + bandH*0.5)), px.y*1.0);
+      c += (i<0.5 ? u_warning : u_ambient) * tl * 0.6;
+    }
+  }
+
+  // bottom-right warning box (ref-1 "APPROACHING LIMITS")
+  {
+    float wBoxAlpha = max(0.0, u_pulse)*0.3 + u_warningBias*0.2;
+    vec2 w0 = vec2(0.68, 0.85);
+    vec2 w1 = vec2(0.93, 0.92);
+    float wF = boxFill(uv, w0, w1);
+    c = mix(c, u_warning*0.08, wF*wBoxAlpha);
+    c += u_warning * boxBorder(uv, w0, w1, px.x*1.2) * (0.6 + wBoxAlpha);
+    // text lines
+    float wt1 = step(w0.x+0.01, uv.x)*step(uv.x, w1.x-0.03)
+              * step(abs(uv.y - 0.875), px.y*1.0);
+    float wt2 = step(w0.x+0.01, uv.x)*step(uv.x, w1.x-0.06)
+              * step(abs(uv.y - 0.895), px.y*1.0);
+    c += u_warning * (wt1+wt2) * (0.5 + wBoxAlpha);
+  }
+
+  // ── 13. READABILITY MASK ───────────────────────────────────
+  // darken left side for text readability
+  float leftMask = mix(0.9 - u_readMask*0.14,
+                        0.0,
+                        smoothstep(0.0, 0.54, uv.x));
+  float leftFade = mix(0.72 - u_readMask*0.18,
+                        0.18 + u_commandBias*0.08,
+                        smoothstep(0.0, 0.86, uv.x));
+  c *= 1.0 - max(leftMask, 0.0)*0.7;
+
+  // center darkening
+  float cMask = exp(-length(uv - vec2(0.34,0.42))*3.5);
+  c *= 1.0 - cMask*(0.3 + u_specimenBias*0.04);
+
+  // vignette
+  float vig = length(uv - 0.5)*1.28;
+  c *= 1.0 - smoothstep(0.5, 1.1, vig)*0.7;
+
+  // ── output ─────────────────────────────────────────────────
+  o_color = vec4(c, 1.0);
+}
+`;
+
+/* ── WebGL helpers ────────────────────────────────────────────── */
+
+function compileShader(gl, type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    const log = gl.getShaderInfoLog(s);
+    gl.deleteShader(s);
+    throw new Error(`Shader compile error: ${log}`);
+  }
+  return s;
+}
+
+function createProgram(gl, vs, fs) {
+  const p = gl.createProgram();
+  gl.attachShader(p, vs);
+  gl.attachShader(p, fs);
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+    const log = gl.getProgramInfoLog(p);
+    gl.deleteProgram(p);
+    throw new Error(`Program link error: ${log}`);
+  }
+  return p;
+}
+
+/* ── Scene derivation (same logic as before) ──────────────────── */
 
 function deriveContinuousScene(scene, controls, time) {
   const slideCount = Math.max(1, controls.slideCount ?? 1);
@@ -99,596 +572,88 @@ function deriveContinuousScene(scene, controls, time) {
   const localProgress = clamp(controls.localProgress ?? 1, 0, 1);
   const transition = smootherstep(0, 1, localProgress);
   const mode = clamp(scene.system.displayMode ?? 0, 0, 1);
+
   const driftA = Math.sin(time * 0.17 + deckProgress * tau * 0.6 + slidePosition * 0.15);
   const driftB = Math.cos(time * 0.11 - slideIndex * tau * 0.42 + 1.1);
   const driftC = Math.sin(time * 0.06 + mode * tau * 0.8 + 2.7);
   const driftD = Math.cos(time * 0.037 + deckProgress * tau * 1.35 - 0.8);
   const pulse = Math.sin(time * (0.42 + calmPulse(scene.system.pulse) * 0.34) + (scene.system.phase ?? 0.5) * tau);
 
-  const specimenBias = clamp(
-    0.88 -
-      deckProgress * 0.34 -
-      mode * 0.28 -
-      (scene.system.sensorField ?? 0) * 0.22 +
-      driftA * 0.04,
-    0.18,
-    1,
-  );
-  const commandBias = clamp(
-    0.22 +
-      (scene.system.defense ?? 0) * 0.34 +
-      mode * 0.18 +
-      deckProgress * 0.22 +
-      transition * 0.08 +
-      driftB * 0.04,
-    0,
-    1,
-  );
-  const contourBias = clamp(
-    (scene.system.contour ?? 0) * 0.72 +
-      (scene.system.sensorField ?? 0) * 0.18 +
-      deckProgress * 0.1 +
-      driftC * 0.05,
-    0,
-    1,
-  );
-  const latticeBias = clamp(
-    (scene.system.lattice ?? 0) * 0.7 +
-      (1 - deckProgress) * 0.12 +
-      (1 - mode) * 0.06 +
-      driftD * 0.04,
-    0,
-    1,
-  );
-  const warningBias = clamp(
-    (scene.system.warningBias ?? 0) * 0.7 + deckProgress * 0.14 + commandBias * 0.12 + Math.max(0, pulse) * 0.08,
-    0,
-    1,
-  );
-  const scanBias = clamp(
-    (scene.system.scan ?? 0) * 0.72 +
-      (scene.system.interference ?? 0) * 0.1 +
-      transition * 0.05 +
-      driftA * 0.04,
-    0,
-    1,
-  );
-  const radialBias = clamp(
-    (scene.system.defense ?? 0) * 0.58 +
-      mode * 0.22 +
-      deckProgress * 0.16 +
-      transition * 0.08 +
-      driftC * 0.04,
-    0,
-    1,
-  );
-  const fieldWarp = clamp(
-    (scene.system.skew ?? 0) * 0.68 +
-      (scene.system.bandCurve ?? 0) * 0.12 +
-      driftB * 0.08 +
-      driftD * 0.05,
-    0,
-    1,
-  );
-  const density = clamp(
-    0.28 +
-      (scene.system.density ?? 0) * 0.42 +
-      contourBias * 0.12 +
-      commandBias * 0.08 -
-      radialBias * 0.05,
-    0,
-    1,
-  );
+  const specimenBias = clamp(0.88 - deckProgress * 0.34 - mode * 0.28 - (scene.system.sensorField ?? 0) * 0.22 + driftA * 0.04, 0.18, 1);
+  const commandBias = clamp(0.22 + (scene.system.defense ?? 0) * 0.34 + mode * 0.18 + deckProgress * 0.22 + transition * 0.08 + driftB * 0.04, 0, 1);
+  const contourBias = clamp((scene.system.contour ?? 0) * 0.72 + (scene.system.sensorField ?? 0) * 0.18 + deckProgress * 0.1 + driftC * 0.05, 0, 1);
+  const latticeBias = clamp((scene.system.lattice ?? 0) * 0.7 + (1 - deckProgress) * 0.12 + (1 - mode) * 0.06 + driftD * 0.04, 0, 1);
+  const warningBias = clamp((scene.system.warningBias ?? 0) * 0.7 + deckProgress * 0.14 + commandBias * 0.12 + Math.max(0, pulse) * 0.08, 0, 1);
+  const scanBias = clamp((scene.system.scan ?? 0) * 0.72 + (scene.system.interference ?? 0) * 0.1 + transition * 0.05 + driftA * 0.04, 0, 1);
+  const radialBias = clamp((scene.system.defense ?? 0) * 0.58 + mode * 0.22 + deckProgress * 0.16 + transition * 0.08 + driftC * 0.04, 0, 1);
+  const fieldWarp = clamp((scene.system.skew ?? 0) * 0.68 + (scene.system.bandCurve ?? 0) * 0.12 + driftB * 0.08 + driftD * 0.05, 0, 1);
+  const density = clamp(0.28 + (scene.system.density ?? 0) * 0.42 + contourBias * 0.12 + commandBias * 0.08 - radialBias * 0.05, 0, 1);
   const readabilityMask = clamp(0.54 + specimenBias * 0.1 + commandBias * 0.06, 0.48, 0.82);
 
   return {
     ...scene,
     sliders: {
-      deckProgress,
-      slideIndex,
-      slidePosition,
+      deckProgress, slideIndex, slidePosition,
       localProgress: transition,
-      specimenBias,
-      commandBias,
-      contourBias,
-      latticeBias,
-      warningBias,
-      scanBias,
-      radialBias,
-      fieldWarp,
-      density,
-      readabilityMask,
-      pulse,
-      driftA,
-      driftB,
-      driftC,
-      driftD,
+      specimenBias, commandBias, contourBias, latticeBias,
+      warningBias, scanBias, radialBias, fieldWarp,
+      density, readabilityMask, pulse,
+      driftA, driftB, driftC, driftD,
     },
   };
-}
-
-function drawBackdrop(context, width, height, scene, palette, sliders, time) {
-  const base = mixColor(scene.base, [0, 0, 0], 0.88);
-  context.fillStyle = toRgba(base, 1);
-  context.fillRect(0, 0, width, height);
-
-  const bloom = context.createRadialGradient(
-    width * scene.light.x,
-    height * scene.light.y,
-    0,
-    width * scene.light.x,
-    height * scene.light.y,
-    Math.max(width, height) * (0.42 + scene.light.radius * 0.36),
-  );
-  bloom.addColorStop(0, toRgba(palette.warning, 0.11 + sliders.warningBias * 0.08));
-  bloom.addColorStop(0.35, toRgba(palette.edge, 0.09 + sliders.contourBias * 0.07));
-  bloom.addColorStop(0.68, toRgba(palette.ambient, 0.06 + sliders.latticeBias * 0.06));
-  bloom.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  context.fillStyle = bloom;
-  context.fillRect(0, 0, width, height);
-
-  const sideGlow = context.createLinearGradient(0, 0, width, 0);
-  sideGlow.addColorStop(0, toRgba(palette.warning, 0.1 + sliders.warningBias * 0.06));
-  sideGlow.addColorStop(0.24, 'rgba(0, 0, 0, 0)');
-  sideGlow.addColorStop(0.78, 'rgba(0, 0, 0, 0)');
-  sideGlow.addColorStop(1, toRgba(palette.ambient, 0.08 + sliders.contourBias * 0.05));
-  context.fillStyle = sideGlow;
-  context.fillRect(0, 0, width, height);
-
-  const sweepX = width * (0.1 + ((time * 0.018 + sliders.driftA * 0.04 + sliders.deckProgress * 0.3) % 0.82));
-  const sweep = context.createLinearGradient(sweepX - width * 0.09, 0, sweepX + width * 0.09, 0);
-  sweep.addColorStop(0, 'rgba(0, 0, 0, 0)');
-  sweep.addColorStop(0.5, toRgba(palette.warning, 0.05 + sliders.scanBias * 0.04));
-  sweep.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  context.fillStyle = sweep;
-  context.fillRect(0, height * 0.04, width, height * 0.92);
-
-  const topBand = context.createLinearGradient(0, 0, width, 0);
-  topBand.addColorStop(0, toRgba(palette.warning, 0.06 + sliders.warningBias * 0.04));
-  topBand.addColorStop(0.45, toRgba(palette.ambient, 0.02 + sliders.latticeBias * 0.02));
-  topBand.addColorStop(1, toRgba(palette.edge, 0.04 + sliders.contourBias * 0.03));
-  context.fillStyle = topBand;
-  context.fillRect(0, 0, width, height * 0.09);
-
-  const lowerBand = context.createLinearGradient(0, height, width, height * 0.64);
-  lowerBand.addColorStop(0, toRgba(palette.ambient, 0.08 + sliders.latticeBias * 0.04));
-  lowerBand.addColorStop(0.4, toRgba(palette.warning, 0.03 + sliders.warningBias * 0.02));
-  lowerBand.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  context.fillStyle = lowerBand;
-  context.fillRect(0, height * 0.64, width, height * 0.36);
-}
-
-function drawAmbientTexture(context, width, height, palette, sliders, geometry, time) {
-  context.save();
-  context.fillStyle = toRgba([255, 255, 255], 0.018 + sliders.scanBias * 0.018);
-  const scanStep = Math.max(4, Math.round(height / (78 + sliders.density * 28)));
-  for (let y = 0; y < height; y += scanStep) {
-    context.fillRect(0, y, width, 1);
-  }
-
-  context.fillStyle = toRgba(palette.edge, 0.028 + sliders.contourBias * 0.015);
-  for (let index = 0; index < geometry.gridRows.length; index += 1) {
-    if (index % 3 !== 0) continue;
-    const row = geometry.gridRows[index];
-    const y = row.y * height + Math.sin(time * 0.22 + row.phase * tau) * height * 0.002;
-    context.fillRect(width * 0.08, y, width * 0.84, 1);
-  }
-
-  context.fillStyle = toRgba(palette.warning, 0.016 + sliders.warningBias * 0.02);
-  const grainCount = Math.max(14, Math.round(geometry.crossMarkers.length * 1.8));
-  for (let index = 0; index < grainCount; index += 1) {
-    const x = width * (0.1 + pseudoNoise(index * 1.73 + Math.floor(time * 18)) * 0.82);
-    const y = height * (0.08 + pseudoNoise(index * 0.91 + Math.floor(time * 14) + 40) * 0.84);
-    context.fillRect(x, y, 1, 1);
-  }
-  context.restore();
-}
-
-function drawLattice(context, width, height, scene, palette, sliders, geometry, time) {
-  context.save();
-  context.strokeStyle = toRgba(palette.ambient, 0.12 + sliders.latticeBias * 0.14);
-  context.lineWidth = 1;
-  context.beginPath();
-
-  geometry.gridColumns.forEach((column) => {
-    const x = column.x * width;
-    const warp =
-      Math.sin(time * 0.22 + column.phase * tau + sliders.fieldWarp * 2.4) * width * 0.008 * sliders.fieldWarp;
-    if (column.weight > 1.2) {
-      context.strokeStyle = toRgba(palette.warning, 0.14 + sliders.warningBias * 0.1);
-      context.beginPath();
-      context.moveTo(x + warp, height * 0.06);
-      context.lineTo(x - warp * 0.6, height * 0.94);
-      context.stroke();
-      context.strokeStyle = toRgba(palette.ambient, 0.08 + sliders.latticeBias * 0.1);
-    }
-    context.moveTo(x + warp, height * 0.06);
-    context.lineTo(x - warp * 0.6, height * 0.94);
-  });
-  context.stroke();
-
-  geometry.gridRows.forEach((row, index) => {
-    const y = row.y * height;
-    const alpha = 0.065 + (1 - row.t) * 0.07 + sliders.scanBias * 0.04;
-    context.strokeStyle = toRgba(index % 4 === 0 ? palette.warning : palette.ambient, alpha);
-    context.lineWidth = row.weight;
-    context.beginPath();
-    for (let step = 0; step <= 20; step += 1) {
-      const u = step / 20;
-      const x = lerp(width * 0.08, width * 0.95, u);
-      const warp =
-        Math.sin(u * tau * (0.8 + sliders.fieldWarp * 1.6) + time * 0.14 + row.phase * tau) *
-        height *
-        0.01 *
-        sliders.fieldWarp;
-      const pinch = Math.exp(-Math.abs(u - 0.55) * (7 - sliders.contourBias * 2));
-      const yy = y + warp * pinch;
-      if (step === 0) context.moveTo(x, yy);
-      else context.lineTo(x, yy);
-    }
-    context.stroke();
-  });
-
-  context.strokeStyle = toRgba(palette.ambient, 0.48);
-  context.lineWidth = 1.4;
-  context.strokeRect(width * 0.04, height * 0.045, width * 0.92, height * 0.89);
-  context.restore();
-}
-
-function drawFieldContours(context, width, height, scene, palette, sliders, geometry, time) {
-  const lineCount = Math.max(10, Math.round(10 + sliders.contourBias * 10 + sliders.radialBias * 3));
-  const centerX = width * (0.52 + (scene.system.beamTilt - 0.5) * 0.18 + sliders.driftB * 0.02);
-  const centerY = height * (0.5 + (scene.system.horizon - 0.5) * 0.12 + sliders.driftC * 0.015);
-  const spanX = width * (0.18 + (scene.system.aperture ?? 0.5) * 0.23);
-  const spanY = height * (0.12 + sliders.specimenBias * 0.1 + sliders.radialBias * 0.08);
-
-  context.save();
-  context.globalCompositeOperation = 'screen';
-
-  for (let index = 0; index < lineCount; index += 1) {
-    const t = index / Math.max(1, lineCount - 1);
-    const spread = 0.52 + t * (1.8 + sliders.contourBias * 0.8);
-    const color = t < 0.4 ? palette.ambient : t < 0.72 ? palette.warning : palette.edge;
-    context.strokeStyle = toRgba(color, 0.14 + (1 - t) * 0.24);
-    context.lineWidth = index % 4 === 0 ? 1.7 : 1.15;
-    context.beginPath();
-    for (let step = 0; step <= 44; step += 1) {
-      const u = step / 44;
-      const x = centerX - spanX + u * spanX * 2;
-      const dx = u - 0.5;
-      const pinch = 1 - Math.exp(-Math.abs(dx) * (5 + sliders.specimenBias * 5));
-      const innerWave =
-        Math.sin(u * tau * (1.2 + sliders.fieldWarp * 1.4) + time * 0.24 + index * 0.18) * height * 0.02;
-      const localWarp = Math.sin(time * 0.12 + u * tau * 0.6 + index * 0.4) * height * 0.008;
-      const y = centerY + (t - 0.5) * spanY * spread + innerWave * pinch * 0.34 + localWarp * (1 - pinch);
-      if (step === 0) context.moveTo(x, y);
-      else context.lineTo(x, y);
-    }
-    context.stroke();
-  }
-
-  context.restore();
-}
-
-function drawSpecimenSystem(context, width, height, scene, palette, sliders, geometry, time) {
-  const columnX = width * (0.49 + (scene.system.beamTilt - 0.5) * 0.08);
-  const columnTop = height * 0.11;
-  const columnBottom = height * 0.88;
-  const columnHeight = columnBottom - columnTop;
-  const columnWidth = width * (0.082 + sliders.specimenBias * 0.03 + sliders.commandBias * 0.018);
-  const lineAlpha = 0.3 + sliders.specimenBias * 0.24;
-  const traceCount = 3 + Math.round(sliders.specimenBias * 3);
-
-  context.save();
-  context.globalCompositeOperation = 'screen';
-  context.strokeStyle = toRgba(palette.warning, lineAlpha);
-  context.lineWidth = 1.2;
-  context.strokeRect(columnX - columnWidth * 0.5, columnTop, columnWidth, columnHeight);
-  context.strokeStyle = toRgba(palette.ambient, 0.2 + sliders.latticeBias * 0.14);
-  context.beginPath();
-  context.moveTo(columnX, columnTop - height * 0.02);
-  context.lineTo(columnX, columnBottom + height * 0.02);
-  context.stroke();
-
-  for (let trace = 0; trace < traceCount; trace += 1) {
-    const offset = (trace - (traceCount - 1) * 0.5) / Math.max(1, traceCount - 1 || 1);
-    context.strokeStyle = toRgba(trace === traceCount - 1 ? palette.warning : palette.edge, lineAlpha - trace * 0.03);
-    context.beginPath();
-    geometry.specimenNodes.forEach((node, index) => {
-      const y = columnTop + node.t * columnHeight;
-      const wobble =
-        Math.sin(node.t * tau * (6.5 + sliders.scanBias * 3.2) + time * (0.62 + trace * 0.05) + node.noise * 4) * 0.22;
-      const inner =
-        Math.sin(node.t * tau * (14 + sliders.contourBias * 7) - time * 0.35 + trace * 0.8) * 0.08 * node.envelope;
-      const x = columnX + (wobble + inner + offset * 0.11) * columnWidth;
-      if (index === 0) context.moveTo(x, y);
-      else context.lineTo(x, y);
-    });
-    context.stroke();
-  }
-
-  const blobCount = Math.max(16, Math.round(20 + sliders.specimenBias * 22));
-  context.fillStyle = toRgba(palette.warning, 0.15 + sliders.warningBias * 0.08);
-  for (let index = 0; index < blobCount; index += 1) {
-    const t = index / Math.max(1, blobCount - 1);
-    const y = columnTop + t * columnHeight;
-    const widthFactor = 0.22 + pseudoNoise(index * 1.9 + Math.floor(time * 7)) * 0.58;
-    const x = columnX + Math.sin(t * tau * 7 + time * 0.8 + index) * columnWidth * 0.18;
-    context.fillRect(x - columnWidth * widthFactor * 0.28, y, columnWidth * widthFactor * 0.56, Math.max(2, height * 0.006));
-  }
-
-  context.strokeStyle = toRgba(palette.warning, 0.48 + sliders.warningBias * 0.2);
-  context.beginPath();
-  for (let step = 0; step <= 80; step += 1) {
-    const t = step / 80;
-    const x = lerp(columnX + columnWidth * 0.52, width * 0.93, t);
-    const envelope = Math.sin(t * Math.PI) ** 0.82;
-    const y =
-      height * (0.28 + t * 0.48) +
-      Math.sin(t * tau * (2 + sliders.fieldWarp * 0.8) + time * 0.46) * height * 0.06 * envelope +
-      Math.sin(t * tau * 8 - time * 0.22) * height * 0.012 * envelope;
-    if (step === 0) context.moveTo(x, y);
-    else context.lineTo(x, y);
-  }
-  context.stroke();
-
-  context.strokeStyle = toRgba(palette.ambient, 0.18 + sliders.latticeBias * 0.14);
-  context.setLineDash([8, 10]);
-  context.beginPath();
-  context.moveTo(columnX, columnTop - height * 0.02);
-  context.lineTo(columnX, columnBottom + height * 0.02);
-  context.stroke();
-  context.setLineDash([]);
-  context.restore();
-}
-
-function drawCommandSystem(context, width, height, scene, palette, sliders, geometry, time) {
-  const cx = width * (0.68 + sliders.radialBias * 0.08 + sliders.driftA * 0.015);
-  const cy = height * (0.46 + (scene.system.reticleBias - 0.4) * 0.16 + sliders.driftB * 0.012);
-  const baseRadius = Math.min(width, height) * (0.12 + sliders.commandBias * 0.08 + sliders.radialBias * 0.04);
-  const ringCount = Math.max(4, Math.round(4 + sliders.radialBias * 5));
-  const spokeCount = 8 + Math.round(sliders.commandBias * 6);
-  const arcSpan = Math.PI * (0.72 + sliders.radialBias * 0.18);
-  const arcStart = -Math.PI * 0.82 + Math.sin(time * 0.18 + sliders.driftC) * 0.12;
-
-  context.save();
-  context.translate(cx, cy);
-  context.globalCompositeOperation = 'screen';
-
-  const commandGlow = context.createRadialGradient(0, 0, baseRadius * 0.1, 0, 0, baseRadius * (2.8 + sliders.radialBias));
-  commandGlow.addColorStop(0, toRgba(palette.warning, 0.06 + sliders.commandBias * 0.05));
-  commandGlow.addColorStop(0.35, toRgba(palette.edge, 0.06 + sliders.contourBias * 0.06));
-  commandGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  context.fillStyle = commandGlow;
-  context.fillRect(-baseRadius * 3.2, -baseRadius * 3.2, baseRadius * 6.4, baseRadius * 6.4);
-
-  for (let ring = 0; ring < ringCount; ring += 1) {
-    const t = ring / Math.max(1, ringCount - 1);
-    const radius = baseRadius * (0.62 + t * 1.9);
-    const segmentCount = 10 + ring * 2 + Math.round(sliders.commandBias * 4);
-    const color = ring % 3 === 0 ? palette.warning : ring % 2 === 0 ? palette.ambient : palette.edge;
-    context.strokeStyle = toRgba(color, 0.24 + (1 - t) * 0.34);
-    context.lineWidth = ring % 2 === 0 ? 1.8 : 1.2;
-    for (let segment = 0; segment < segmentCount; segment += 1) {
-      const a0 = arcStart + (segment / segmentCount) * arcSpan;
-      const a1 = arcStart + ((segment + 0.72) / segmentCount) * arcSpan;
-      context.beginPath();
-      context.arc(0, 0, radius, a0, a1);
-      context.stroke();
-    }
-  }
-
-  context.strokeStyle = toRgba(palette.ambient, 0.34 + sliders.commandBias * 0.2);
-  context.lineWidth = 1.25;
-  for (let index = 0; index < spokeCount; index += 1) {
-    const angle = (-Math.PI * 0.5 + (index / spokeCount) * tau + Math.sin(time * 0.24 + index) * 0.012);
-    const inner = baseRadius * 0.44;
-    const outer = baseRadius * (2.05 + sliders.radialBias * 0.66);
-    context.beginPath();
-    context.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
-    context.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
-    context.stroke();
-  }
-
-  context.strokeStyle = toRgba(palette.warning, 0.66 + sliders.warningBias * 0.18);
-  context.lineWidth = 2;
-  context.beginPath();
-  context.moveTo(-baseRadius * 0.28, 0);
-  context.lineTo(baseRadius * 0.28, 0);
-  context.moveTo(0, -baseRadius * 0.28);
-  context.lineTo(0, baseRadius * 0.28);
-  context.stroke();
-
-  const wedgeAngle = -Math.PI * 0.5 + Math.sin(time * 0.3 + sliders.deckProgress * tau) * 0.1;
-  context.fillStyle = toRgba(palette.warning, 0.085 + sliders.warningBias * 0.05);
-  context.beginPath();
-  context.moveTo(0, 0);
-  context.arc(0, 0, baseRadius * (1.8 + sliders.radialBias * 0.5), wedgeAngle - 0.12, wedgeAngle + 0.12);
-  context.closePath();
-  context.fill();
-
-  context.strokeStyle = toRgba(palette.warning, 0.82);
-  context.lineWidth = 1.1;
-  context.strokeRect(-baseRadius * 1.92, -baseRadius * 2.22, baseRadius * 1.32, baseRadius * 0.42);
-  context.strokeRect(baseRadius * 0.68, -baseRadius * 2.22, baseRadius * 1.32, baseRadius * 0.42);
-  context.fillStyle = toRgba(palette.warning, 0.96);
-  context.font = `${Math.max(10, baseRadius * 0.12)}px var(--font-mono), monospace`;
-  context.textAlign = 'left';
-  context.textBaseline = 'middle';
-  context.fillText('SEAL VECTOR', -baseRadius * 1.82, -baseRadius * 2.02);
-  context.fillText('TRACK STATE', baseRadius * 0.78, -baseRadius * 2.02);
-
-  context.restore();
-}
-
-function drawMarkers(context, width, height, palette, geometry) {
-  const arm = Math.min(width, height) * 0.018;
-  const fontSize = Math.max(10, Math.round(width * 0.0095));
-  context.save();
-  context.strokeStyle = toRgba(palette.warning, 0.46);
-  context.fillStyle = toRgba(palette.warning, 0.74);
-  context.lineWidth = 1.3;
-  context.font = `700 ${fontSize}px var(--font-mono), monospace`;
-  context.textAlign = 'left';
-  context.textBaseline = 'bottom';
-  geometry.crossMarkers.forEach((marker) => {
-    const x = marker.x * width;
-    const y = marker.y * height;
-    context.beginPath();
-    context.moveTo(x - arm, y);
-    context.lineTo(x + arm, y);
-    context.moveTo(x, y - arm);
-    context.lineTo(x, y + arm);
-    context.stroke();
-    context.fillText(marker.label, x + arm * 0.24, y - arm * 0.3);
-  });
-  context.restore();
-}
-
-function drawTelemetry(context, width, height, scene, palette, sliders, geometry, time) {
-  const fontSize = Math.max(11, Math.round(width * 0.0105));
-  context.save();
-  context.strokeStyle = toRgba(palette.ambient, 0.62);
-  context.fillStyle = toRgba(palette.warning, 0.86);
-  context.font = `700 ${fontSize}px var(--font-mono), monospace`;
-  context.textBaseline = 'middle';
-
-  const topY = height * 0.08;
-  const bottomY = height * 0.92;
-  context.beginPath();
-  context.moveTo(width * 0.05, topY);
-  context.lineTo(width * 0.95, topY);
-  context.moveTo(width * 0.05, bottomY);
-  context.lineTo(width * 0.95, bottomY);
-  context.stroke();
-
-  geometry.frameTicks.forEach((tick) => {
-    const x = lerp(width * 0.05, width * 0.95, tick.t);
-    const size = height * (tick.weight > 0.8 ? 0.015 : 0.008);
-    context.beginPath();
-    context.moveTo(x, topY);
-    context.lineTo(x, topY + size);
-    context.moveTo(x, bottomY);
-    context.lineTo(x, bottomY - size);
-    context.stroke();
-  });
-
-  const boxHeight = height * 0.064;
-  const leftBoxWidth = width * 0.25;
-  const rightBoxWidth = width * 0.19;
-  context.fillStyle = 'rgba(10, 6, 2, 0.72)';
-  context.strokeStyle = toRgba(palette.warning, 0.84);
-  context.lineWidth = 1.2;
-  context.fillRect(width * 0.07, height * 0.03, leftBoxWidth, boxHeight);
-  context.strokeRect(width * 0.07, height * 0.03, leftBoxWidth, boxHeight);
-  context.fillRect(width * 0.74, height * 0.03, rightBoxWidth, boxHeight);
-  context.strokeRect(width * 0.74, height * 0.03, rightBoxWidth, boxHeight);
-
-  context.fillStyle = toRgba(palette.warning, 0.94);
-  context.fillText('PSYCHOGRAPHIC DISPLAY', width * 0.085, height * 0.06);
-  context.fillText(`PHASE ${(scene.system.phase * 100).toFixed(0)} / LINK ${(sliders.deckProgress * 100).toFixed(0)}`, width * 0.085, height * 0.087);
-  context.textAlign = 'right';
-  context.fillText(`MODE ${(scene.system.displayMode * 100).toFixed(0)}`, width * 0.915, height * 0.06);
-  context.fillText(`SYNC ${Math.round(100 + Math.sin(time * 0.3) * 20 + sliders.commandBias * 90)}`, width * 0.915, height * 0.087);
-
-  context.textAlign = 'left';
-  context.strokeStyle = toRgba(palette.warning, 0.62);
-  context.fillStyle = toRgba(palette.ambient, 0.92);
-  const rulerX = width * 0.035;
-  for (let index = 0; index <= 12; index += 1) {
-    const y = lerp(height * 0.08, height * 0.92, index / 12);
-    const tick = index % 3 === 0 ? width * 0.022 : width * 0.012;
-    context.beginPath();
-    context.moveTo(rulerX, y);
-    context.lineTo(rulerX + tick, y);
-    context.stroke();
-    if (index < 12) {
-      context.fillText(`+${String(12 - index).padStart(2, '0')}`, rulerX + tick + width * 0.006, y);
-    }
-  }
-
-  const labels = ['A.T. FIELD STATUS', 'EVA-05', 'EVA-06', 'EVA-07', 'EVA-13'];
-  const bandY = height * 0.11;
-  const bandHeight = height * 0.045;
-  const bandWidth = width * 0.125;
-  for (let index = 0; index < labels.length; index += 1) {
-    const x = width * 0.07 + index * (bandWidth + width * 0.012);
-    context.fillStyle = 'rgba(10, 6, 2, 0.64)';
-    context.strokeStyle = toRgba(palette.warning, 0.82 - index * 0.04);
-    context.fillRect(x, bandY, bandWidth, bandHeight);
-    context.strokeRect(x, bandY, bandWidth, bandHeight);
-    context.fillStyle = toRgba(index === 0 ? palette.warning : palette.ambient, 0.94);
-    context.fillText(labels[index], x + width * 0.008, bandY + bandHeight * 0.5);
-  }
-  context.restore();
-}
-
-function drawReadabilityMask(context, width, height, sliders) {
-  const leftMask = context.createLinearGradient(0, 0, width * 0.54, 0);
-  leftMask.addColorStop(0, `rgba(0, 0, 0, ${0.9 - sliders.readabilityMask * 0.14})`);
-  leftMask.addColorStop(0.4, `rgba(0, 0, 0, ${0.72 - sliders.readabilityMask * 0.18})`);
-  leftMask.addColorStop(0.86, `rgba(0, 0, 0, ${0.18 + sliders.commandBias * 0.08})`);
-  leftMask.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  context.fillStyle = leftMask;
-  context.fillRect(0, 0, width, height);
-
-  const centerMask = context.createRadialGradient(width * 0.34, height * 0.42, 0, width * 0.34, height * 0.42, width * 0.44);
-  centerMask.addColorStop(0, `rgba(0, 0, 0, ${0.64 + sliders.specimenBias * 0.07})`);
-  centerMask.addColorStop(0.5, `rgba(0, 0, 0, ${0.26 + sliders.commandBias * 0.06})`);
-  centerMask.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  context.fillStyle = centerMask;
-  context.fillRect(0, 0, width, height);
-
-  const vignette = context.createRadialGradient(width * 0.5, height * 0.5, 0, width * 0.5, height * 0.5, Math.max(width, height) * 0.78);
-  vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
-  vignette.addColorStop(0.7, 'rgba(0, 0, 0, 0.18)');
-  vignette.addColorStop(1, 'rgba(0, 0, 0, 0.82)');
-  context.fillStyle = vignette;
-  context.fillRect(0, 0, width, height);
 }
 
 function updateStats(state, frameMs) {
   state.frameSamples.push(frameMs);
   if (state.frameSamples.length > 120) state.frameSamples.shift();
   const samples = [...state.frameSamples].sort((a, b) => a - b);
-  const avg = state.frameSamples.reduce((sum, value) => sum + value, 0) / state.frameSamples.length;
+  const avg = state.frameSamples.reduce((s, v) => s + v, 0) / state.frameSamples.length;
   const p95 = samples[Math.max(0, Math.floor(samples.length * 0.95) - 1)] ?? frameMs;
-  const fps = avg > 0 ? 1000 / avg : 0;
-  state.stats = {
-    frameMs,
-    avgFrameMs: avg,
-    p95FrameMs: p95,
-    fps,
-  };
-  window.__openclawDeckBackgroundStats = {
-    ...state.stats,
-    canvasCount: 1,
-    renderPathCount: 1,
-    width: state.width,
-    height: state.height,
-    dpr: state.dpr,
-    quality: state.quality,
-    geometry: {
-      gridColumns: state.geometry?.gridColumns.length ?? 0,
-      gridRows: state.geometry?.gridRows.length ?? 0,
-      specimenNodes: state.geometry?.specimenNodes.length ?? 0,
-      frameTicks: state.geometry?.frameTicks.length ?? 0,
-      crossMarkers: state.geometry?.crossMarkers.length ?? 0,
-    },
-  };
+  state.stats = { frameMs, avgFrameMs: avg, p95FrameMs: p95, fps: avg > 0 ? 1000 / avg : 0 };
+  window.__openclawDeckBackgroundStats = { ...state.stats, renderer: 'webgl2' };
 }
 
-export function createDeckBackgroundRenderer(context) {
+/* ── Public API ───────────────────────────────────────────────── */
+
+export function createDeckBackgroundRenderer(canvas) {
+  const gl = canvas.getContext('webgl2', { alpha: false, antialias: false, powerPreference: 'high-performance' });
+  if (!gl) throw new Error('WebGL 2 not available');
+
+  const vs = compileShader(gl, gl.VERTEX_SHADER, VERT);
+  const fs = compileShader(gl, gl.FRAGMENT_SHADER, FRAG);
+  const prog = createProgram(gl, vs, fs);
+  gl.deleteShader(vs);
+  gl.deleteShader(fs);
+
+  // fullscreen quad
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+
+  const posLoc = gl.getAttribLocation(prog, 'a_pos');
+  const vao = gl.createVertexArray();
+  gl.bindVertexArray(vao);
+  gl.enableVertexAttribArray(posLoc);
+  gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+  gl.bindVertexArray(null);
+
+  // uniform locations
+  const loc = {};
+  const uNames = [
+    'u_res','u_time',
+    'u_base','u_ambient','u_edge','u_warning',
+    'u_lightPos','u_lightRadius',
+    'u_deckProgress','u_specimenBias','u_commandBias','u_contourBias',
+    'u_latticeBias','u_warningBias','u_scanBias','u_radialBias',
+    'u_fieldWarp','u_density','u_readMask','u_pulse',
+    'u_driftA','u_driftB','u_driftC','u_driftD',
+    'u_beamTilt','u_horizon','u_aperture','u_reticleBias','u_phase',
+  ];
+  for (const name of uNames) loc[name] = gl.getUniformLocation(prog, name);
+
   const state = {
-    context,
-    width: 0,
-    height: 0,
-    dpr: 1,
-    quality: 1,
-    geometryKey: '',
-    geometry: null,
-    frameSamples: [],
-    stats: null,
+    width: 0, height: 0, dpr: 1,
+    frameSamples: [], stats: null,
   };
 
   return {
@@ -696,51 +661,79 @@ export function createDeckBackgroundRenderer(context) {
       state.width = width;
       state.height = height;
       state.dpr = dpr;
-      const viewportWeight = clamp((width * height) / (1600 * 900), 0.72, 1.4);
-      state.quality = clamp(1.12 - (viewportWeight - 0.72) * 0.18 - (dpr - 1) * 0.12, 0.72, 1.05);
-      const geometryKey = `${Math.round(width)}|${Math.round(height)}|${state.quality.toFixed(2)}`;
-      if (geometryKey !== state.geometryKey) {
-        state.geometryKey = geometryKey;
-        state.geometry = buildGeometry(width, height, state.quality);
-      }
     },
+
     render(scene, timeMs, controls = {}) {
       const start = performance.now();
-      const { context } = state;
       const time = timeMs * 0.001;
-      const continuousScene = deriveContinuousScene(scene, controls, time);
-      const ambient = continuousScene.ambient ?? continuousScene.toxic ?? continuousScene.haze;
-      const edge = continuousScene.edge ?? continuousScene.magenta ?? continuousScene.warning ?? ambient;
-      const warning = continuousScene.warning ?? edge;
-      const sliders = continuousScene.sliders;
-      const palette = {
-        ambient: mixColor(scaleColor(ambient, 1.16), [172, 255, 218], 0.18 + sliders.latticeBias * 0.1),
-        edge: mixColor(mixColor(scaleColor(edge, 1), ambient, 0.5), [196, 136, 222], 0.05 + sliders.contourBias * 0.06),
-        warning: mixColor(scaleColor(warning, 1.16), [255, 176, 92], 0.24 + sliders.warningBias * 0.14),
+      const cs = deriveContinuousScene(scene, controls, time);
+      const sl = cs.sliders;
+
+      // compute palette (same logic as the old Canvas 2D renderer)
+      const ambient = cs.ambient ?? cs.toxic ?? cs.haze;
+      const edge = cs.edge ?? cs.magenta ?? cs.warning ?? ambient;
+      const warning = cs.warning ?? edge;
+      const pal = {
+        ambient: mixColor(scaleColor(ambient, 1.16), [172, 255, 218], 0.18 + sl.latticeBias * 0.1),
+        edge: mixColor(mixColor(scaleColor(edge, 1), ambient, 0.5), [196, 136, 222], 0.05 + sl.contourBias * 0.06),
+        warning: mixColor(scaleColor(warning, 1.16), [255, 176, 92], 0.24 + sl.warningBias * 0.14),
       };
 
-      context.setTransform(1, 0, 0, 1, 0, 0);
-      context.clearRect(0, 0, state.width * state.dpr, state.height * state.dpr);
-      context.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+      const w = Math.round(state.width * state.dpr);
+      const h = Math.round(state.height * state.dpr);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+      canvas.style.width = `${state.width}px`;
+      canvas.style.height = `${state.height}px`;
 
-      drawBackdrop(context, state.width, state.height, continuousScene, palette, sliders, time);
-      drawAmbientTexture(context, state.width, state.height, palette, sliders, state.geometry, time);
-      drawLattice(context, state.width, state.height, continuousScene, palette, sliders, state.geometry, time);
-      withAlpha(context, 0.84 + sliders.contourBias * 0.12, () => {
-        drawFieldContours(context, state.width, state.height, continuousScene, palette, sliders, state.geometry, time);
-      });
-      withAlpha(context, 0.76 + sliders.specimenBias * 0.16, () => {
-        drawSpecimenSystem(context, state.width, state.height, continuousScene, palette, sliders, state.geometry, time);
-      });
-      withAlpha(context, 0.6 + sliders.commandBias * 0.26, () => {
-        drawCommandSystem(context, state.width, state.height, continuousScene, palette, sliders, state.geometry, time);
-      });
-      drawMarkers(context, state.width, state.height, palette, state.geometry);
-      drawTelemetry(context, state.width, state.height, continuousScene, palette, sliders, state.geometry, time);
-      drawReadabilityMask(context, state.width, state.height, sliders);
+      gl.viewport(0, 0, w, h);
+      gl.useProgram(prog);
+
+      // set uniforms
+      gl.uniform2f(loc.u_res, state.width, state.height);
+      gl.uniform1f(loc.u_time, time);
+
+      const toGL = (rgb) => [rgb[0] / 255, rgb[1] / 255, rgb[2] / 255];
+      gl.uniform3fv(loc.u_base, toGL(cs.base));
+      gl.uniform3fv(loc.u_ambient, toGL(pal.ambient));
+      gl.uniform3fv(loc.u_edge, toGL(pal.edge));
+      gl.uniform3fv(loc.u_warning, toGL(pal.warning));
+
+      gl.uniform2f(loc.u_lightPos, cs.light.x, cs.light.y);
+      gl.uniform1f(loc.u_lightRadius, cs.light.radius);
+
+      gl.uniform1f(loc.u_deckProgress, sl.deckProgress);
+      gl.uniform1f(loc.u_specimenBias, sl.specimenBias);
+      gl.uniform1f(loc.u_commandBias, sl.commandBias);
+      gl.uniform1f(loc.u_contourBias, sl.contourBias);
+      gl.uniform1f(loc.u_latticeBias, sl.latticeBias);
+      gl.uniform1f(loc.u_warningBias, sl.warningBias);
+      gl.uniform1f(loc.u_scanBias, sl.scanBias);
+      gl.uniform1f(loc.u_radialBias, sl.radialBias);
+      gl.uniform1f(loc.u_fieldWarp, sl.fieldWarp);
+      gl.uniform1f(loc.u_density, sl.density);
+      gl.uniform1f(loc.u_readMask, sl.readabilityMask);
+      gl.uniform1f(loc.u_pulse, sl.pulse);
+      gl.uniform1f(loc.u_driftA, sl.driftA);
+      gl.uniform1f(loc.u_driftB, sl.driftB);
+      gl.uniform1f(loc.u_driftC, sl.driftC);
+      gl.uniform1f(loc.u_driftD, sl.driftD);
+
+      gl.uniform1f(loc.u_beamTilt, cs.system.beamTilt ?? 0.58);
+      gl.uniform1f(loc.u_horizon, cs.system.horizon ?? 0.44);
+      gl.uniform1f(loc.u_aperture, cs.system.aperture ?? 0.52);
+      gl.uniform1f(loc.u_reticleBias, cs.system.reticleBias ?? 0.34);
+      gl.uniform1f(loc.u_phase, cs.system.phase ?? 0.5);
+
+      gl.bindVertexArray(vao);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      gl.bindVertexArray(null);
 
       updateStats(state, performance.now() - start);
     },
+
     getStats() {
       return state.stats;
     },

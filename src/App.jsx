@@ -8,10 +8,6 @@ const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const lerp = (start, end, amount) => start + (end - start) * amount;
 const mixColor = (from, to, amount) => from.map((value, index) => lerp(value, to[index], amount));
 const mixValue = (from, to, amount) => lerp(from ?? 0, to ?? 0, amount);
-const smootherstep = (edge0, edge1, value) => {
-  const t = clamp((value - edge0) / Math.max(0.0001, edge1 - edge0), 0, 1);
-  return t * t * t * (t * (t * 6 - 15) + 10);
-};
 
 const ACCENT_CLASS = {
   cool: 'border-sky-300/25 bg-sky-200/[0.08]',
@@ -183,9 +179,9 @@ function DeckBackground({ activeIndex }) {
     animationFrame: 0,
     dpr: 1,
     height: 0,
+    lastFrameTime: 0,
     media: null,
     renderer: null,
-    transitionStart: 0,
     width: 0,
   });
 
@@ -193,12 +189,9 @@ function DeckBackground({ activeIndex }) {
     const canvas = canvasRef.current;
     if (!(canvas instanceof HTMLCanvasElement)) return;
 
-    const context = canvas.getContext('2d');
-    if (!context) return;
-
     const state = stateRef.current;
     state.media = window.matchMedia('(prefers-reduced-motion: reduce)');
-    state.renderer = createDeckBackgroundRenderer(context);
+    state.renderer = createDeckBackgroundRenderer(canvas);
 
     const renderFrame = (scene, timeMs, position, localProgress) => {
       state.renderer?.render(scene, timeMs, {
@@ -215,18 +208,40 @@ function DeckBackground({ activeIndex }) {
       state.animationFrame = 0;
     };
 
+    // Exponential smoothing: each frame the scene smoothly approaches the
+    // target.  No timer / duration – large jumps start fast and ease out,
+    // rapid re-targeting just moves the destination.  Rate ≈ 95% in ~550 ms.
+    const SMOOTH_RATE = 5.5;
+
     const frame = (timeMs) => {
-      const progress = state.media?.matches ? 1 : clamp((timeMs - state.transitionStart) / transitionMs, 0, 1);
-      const easedProgress = smootherstep(0, 1, progress);
-      const scene = interpolateScene(currentSceneRef.current, targetSceneRef.current, easedProgress);
-      const position = lerp(currentPositionRef.current, targetPositionRef.current, easedProgress);
+      const dt = Math.min((timeMs - state.lastFrameTime) / 1000, 0.1);
+      state.lastFrameTime = timeMs;
 
-      renderFrame(scene, timeMs, position, easedProgress);
+      if (!state.media?.matches && dt > 0) {
+        const alpha = 1 - Math.exp(-SMOOTH_RATE * dt);
 
-      if (progress >= 1) {
-        currentSceneRef.current = targetSceneRef.current;
-        currentPositionRef.current = targetPositionRef.current;
+        currentSceneRef.current = interpolateScene(
+          currentSceneRef.current,
+          targetSceneRef.current,
+          alpha,
+        );
+        currentPositionRef.current = lerp(
+          currentPositionRef.current,
+          targetPositionRef.current,
+          alpha,
+        );
+
+        // Snap when asymptotically close to avoid creep
+        if (Math.abs(currentPositionRef.current - targetPositionRef.current) < 0.002) {
+          currentSceneRef.current = targetSceneRef.current;
+          currentPositionRef.current = targetPositionRef.current;
+        }
       }
+
+      const posDelta = Math.abs(currentPositionRef.current - targetPositionRef.current);
+      const localProgress = clamp(1 - posDelta, 0, 1);
+
+      renderFrame(currentSceneRef.current, timeMs, currentPositionRef.current, localProgress);
 
       if (!document.hidden && !state.media?.matches) {
         state.animationFrame = window.requestAnimationFrame(frame);
@@ -237,6 +252,7 @@ function DeckBackground({ activeIndex }) {
 
     const startLoop = () => {
       if (state.animationFrame) return;
+      state.lastFrameTime = performance.now();
       state.animationFrame = window.requestAnimationFrame(frame);
     };
     startLoopRef.current = startLoop;
@@ -245,10 +261,6 @@ function DeckBackground({ activeIndex }) {
       state.dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth >= 1500 ? 1 : window.innerWidth >= 1100 ? 1.1 : 1.2);
       state.width = window.innerWidth;
       state.height = window.innerHeight;
-      canvas.width = Math.round(state.width * state.dpr);
-      canvas.height = Math.round(state.height * state.dpr);
-      canvas.style.width = `${state.width}px`;
-      canvas.style.height = `${state.height}px`;
       state.renderer?.resize(state.width, state.height, state.dpr);
       renderFrame(currentSceneRef.current, performance.now(), currentPositionRef.current, 1);
     };
@@ -257,6 +269,7 @@ function DeckBackground({ activeIndex }) {
       if (document.hidden) {
         stopLoop();
       } else {
+        state.lastFrameTime = performance.now();
         renderFrame(currentSceneRef.current, performance.now(), currentPositionRef.current, 1);
         startLoop();
       }
@@ -269,13 +282,12 @@ function DeckBackground({ activeIndex }) {
         currentPositionRef.current = targetPositionRef.current;
         renderFrame(currentSceneRef.current, performance.now(), currentPositionRef.current, 1);
       } else {
-        state.transitionStart = performance.now();
         startLoop();
       }
     };
 
     resize();
-    state.transitionStart = performance.now();
+    state.lastFrameTime = performance.now();
     if (!state.media?.matches) startLoop();
     window.addEventListener('resize', resize);
     document.addEventListener('visibilitychange', onVisibilityChange);
@@ -292,18 +304,13 @@ function DeckBackground({ activeIndex }) {
 
   useEffect(() => {
     const state = stateRef.current;
-    const nextScene = slides[activeIndex].scene;
-    const now = performance.now();
-    const progress = state.media?.matches ? 1 : clamp((now - state.transitionStart) / transitionMs, 0, 1);
-    const easedProgress = smootherstep(0, 1, progress);
+    targetSceneRef.current = slides[activeIndex].scene;
+    targetPositionRef.current = activeIndex;
 
     if (state.media?.matches) {
-      currentSceneRef.current = nextScene;
-      targetSceneRef.current = nextScene;
-      currentPositionRef.current = activeIndex;
-      targetPositionRef.current = activeIndex;
-      state.renderer?.resize(state.width, state.height, state.dpr);
-      state.renderer?.render(nextScene, now, {
+      currentSceneRef.current = targetSceneRef.current;
+      currentPositionRef.current = targetPositionRef.current;
+      state.renderer?.render(targetSceneRef.current, performance.now(), {
         deckProgress: getSceneProgress(activeIndex),
         localProgress: 1,
         slideCount: slides.length,
@@ -311,20 +318,6 @@ function DeckBackground({ activeIndex }) {
       });
       return;
     }
-
-    currentSceneRef.current = interpolateScene(currentSceneRef.current, targetSceneRef.current, easedProgress);
-    currentPositionRef.current = lerp(currentPositionRef.current, targetPositionRef.current, easedProgress);
-    targetSceneRef.current = nextScene;
-    targetPositionRef.current = activeIndex;
-    state.transitionStart = now;
-
-    state.renderer?.resize(state.width, state.height, state.dpr);
-    state.renderer?.render(currentSceneRef.current, now, {
-      deckProgress: getSceneProgress(currentPositionRef.current),
-      localProgress: 0,
-      slideCount: slides.length,
-      slidePosition: currentPositionRef.current,
-    });
 
     if (!document.hidden) startLoopRef.current();
   }, [activeIndex]);
