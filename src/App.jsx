@@ -29,10 +29,15 @@ function interpolateScene(from, to, amount) {
   const toAmbient = to.ambient ?? to.toxic ?? to.haze;
   const fromEdge = from.edge ?? from.magenta ?? from.warning ?? fromAmbient;
   const toEdge = to.edge ?? to.magenta ?? to.warning ?? toAmbient;
+  const fromWarning = from.warning ?? fromEdge;
+  const toWarning = to.warning ?? toEdge;
 
   return {
     base: mixColor(from.base, to.base, amount),
     haze: mixColor(from.haze, to.haze, amount),
+    toxic: mixColor(from.toxic ?? fromAmbient, to.toxic ?? toAmbient, amount),
+    magenta: mixColor(from.magenta ?? fromEdge, to.magenta ?? toEdge, amount),
+    warning: mixColor(fromWarning, toWarning, amount),
     ambient: mixColor(fromAmbient, toAmbient, amount),
     edge: mixColor(fromEdge, toEdge, amount),
     light: {
