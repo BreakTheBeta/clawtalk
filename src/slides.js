@@ -45,12 +45,13 @@ export const slides = [
     kicker: 'Adoption',
     title: 'Uptake splits for a reason',
     layout: 'trio',
+    // ref-4: monochrome amber on black
     scene: scene(
-      [2, 3, 8],
-      [22, 8, 38],
-      [122, 255, 76],
-      [214, 58, 255],
-      [255, 92, 46],
+      [2, 2, 4],
+      [12, 6, 4],
+      [255, 160, 40],
+      [255, 140, 50],
+      [255, 180, 60],
       { x: 0.88, y: 0.12, radius: 0.84, strength: 1.22 },
       {
         displayMode: 0.16,
@@ -98,12 +99,13 @@ export const slides = [
     kicker: 'Design',
     title: 'Safe environments create product signal',
     layout: 'steps',
+    // ref-4: monochrome amber (warm variant)
     scene: scene(
-      [2, 3, 8],
-      [26, 10, 48],
-      [104, 248, 88],
-      [232, 74, 255],
-      [255, 110, 56],
+      [3, 2, 3],
+      [14, 8, 4],
+      [240, 150, 35],
+      [255, 130, 40],
+      [255, 170, 55],
       { x: 0.74, y: 0.08, radius: 0.92, strength: 1.28 },
       {
         displayMode: 0.18,
@@ -144,12 +146,13 @@ export const slides = [
     kicker: 'twodot.ai',
     title: 'Operating claws, not demo chats',
     layout: 'split',
+    // ref-1: amber specimen + teal grid
     scene: scene(
-      [1, 4, 7],
-      [18, 16, 28],
-      [104, 255, 82],
-      [188, 44, 255],
-      [255, 118, 48],
+      [2, 3, 8],
+      [8, 12, 18],
+      [40, 220, 200],
+      [60, 180, 160],
+      [255, 180, 60],
       { x: 0.58, y: 0.22, radius: 0.78, strength: 1.18 },
       {
         displayMode: 0.08,
@@ -189,12 +192,13 @@ export const slides = [
     kicker: 'Workflow',
     title: 'Business work is state movement',
     layout: 'steps',
+    // ref-1: amber + teal (warm variant)
     scene: scene(
-      [1, 3, 6],
-      [12, 18, 18],
-      [88, 250, 92],
-      [164, 36, 255],
-      [255, 88, 38],
+      [2, 4, 10],
+      [6, 14, 20],
+      [50, 210, 190],
+      [70, 170, 150],
+      [255, 190, 70],
       { x: 0.46, y: 0.08, radius: 0.98, strength: 1.34 },
       {
         displayMode: 0.24,
@@ -231,12 +235,13 @@ export const slides = [
     kicker: 'Why OpenClaw',
     title: 'A bounded proving ground',
     layout: 'trio',
+    // ref-2: teal data rings + red warning
     scene: scene(
-      [1, 2, 7],
-      [18, 14, 22],
-      [112, 255, 90],
-      [196, 52, 255],
-      [255, 104, 44],
+      [2, 4, 8],
+      [10, 22, 20],
+      [40, 220, 180],
+      [220, 50, 40],
+      [255, 100, 30],
       { x: 0.86, y: 0.14, radius: 0.88, strength: 1.16 },
       {
         displayMode: 0.12,
@@ -270,12 +275,13 @@ export const slides = [
     kicker: 'Primitive',
     title: 'Disposable chats were the wrong unit',
     layout: 'split',
+    // ref-2: teal + red (intense variant)
     scene: scene(
-      [1, 3, 9],
-      [28, 12, 42],
-      [98, 238, 70],
-      [218, 70, 255],
-      [255, 96, 42],
+      [2, 3, 7],
+      [12, 20, 18],
+      [50, 230, 190],
+      [240, 60, 35],
+      [255, 110, 35],
       { x: 0.92, y: 0.12, radius: 0.86, strength: 1.34 },
       {
         displayMode: 0.88,
@@ -320,12 +326,13 @@ export const slides = [
     kicker: 'Memory',
     title: 'Memory alone was still a patch',
     layout: 'split',
+    // ref-3: multicolor (yellow→magenta→blue)
     scene: scene(
-      [1, 3, 8],
-      [32, 12, 50],
-      [110, 236, 88],
-      [236, 92, 255],
-      [255, 114, 52],
+      [2, 3, 6],
+      [18, 8, 14],
+      [255, 220, 40],
+      [220, 60, 255],
+      [255, 140, 50],
       { x: 0.64, y: 0.1, radius: 0.84, strength: 1.24 },
       {
         displayMode: 0.9,
@@ -370,12 +377,13 @@ export const slides = [
     kicker: 'Shift',
     title: 'OpenClaw changes the unit of work',
     layout: 'trio',
+    // ref-3: multicolor (cool variant)
     scene: scene(
-      [1, 3, 9],
-      [24, 10, 54],
-      [84, 255, 88],
-      [216, 68, 255],
-      [255, 120, 50],
+      [2, 2, 7],
+      [14, 10, 18],
+      [240, 200, 50],
+      [200, 70, 240],
+      [255, 150, 55],
       { x: 0.42, y: 0.09, radius: 1.04, strength: 1.36 },
       {
         displayMode: 0.16,
@@ -409,12 +417,13 @@ export const slides = [
     kicker: 'Structure',
     title: 'One identity, many live contexts',
     layout: 'split-note',
+    // ref-5: dark navy + amber
     scene: scene(
-      [1, 3, 8],
-      [26, 12, 44],
-      [92, 246, 84],
-      [194, 54, 255],
-      [255, 100, 40],
+      [3, 4, 12],
+      [8, 8, 20],
+      [180, 150, 80],
+      [200, 160, 100],
+      [255, 160, 60],
       { x: 0.8, y: 0.12, radius: 0.82, strength: 1.2 },
       {
         displayMode: 0.86,
@@ -452,12 +461,13 @@ export const slides = [
     kicker: 'Operations',
     title: 'Why operators care',
     layout: 'metrics',
+    // ref-5: dark navy + amber (warm variant)
     scene: scene(
-      [1, 3, 8],
-      [18, 12, 46],
-      [102, 248, 76],
-      [208, 60, 255],
-      [255, 106, 44],
+      [3, 3, 10],
+      [10, 10, 22],
+      [170, 140, 75],
+      [190, 150, 90],
+      [255, 170, 65],
       { x: 0.54, y: 0.08, radius: 0.98, strength: 1.38 },
       {
         displayMode: 0.56,
@@ -497,12 +507,13 @@ export const slides = [
     kicker: 'Today',
     title: 'Claws in practice',
     layout: 'names',
+    // ref-4: monochrome amber (clean)
     scene: scene(
-      [1, 3, 8],
-      [34, 12, 48],
-      [112, 236, 94],
-      [228, 88, 255],
-      [255, 120, 54],
+      [2, 2, 4],
+      [10, 6, 3],
+      [255, 155, 38],
+      [250, 135, 45],
+      [255, 175, 58],
       { x: 0.86, y: 0.12, radius: 0.86, strength: 1.24 },
       {
         displayMode: 0.88,
@@ -544,12 +555,13 @@ export const slides = [
     kicker: 'Example',
     title: 'Ali is a legible claw',
     layout: 'split',
+    // ref-1: amber + teal
     scene: scene(
-      [1, 3, 8],
-      [30, 14, 44],
-      [92, 248, 86],
-      [196, 50, 255],
-      [255, 92, 44],
+      [2, 3, 9],
+      [6, 10, 16],
+      [45, 215, 195],
+      [55, 175, 155],
+      [255, 185, 65],
       { x: 0.66, y: 0.1, radius: 0.94, strength: 1.32 },
       {
         displayMode: 0.82,
@@ -582,12 +594,13 @@ export const slides = [
     kicker: 'V1',
     title: 'Current claw priorities',
     layout: 'grid',
+    // ref-2: teal + red
     scene: scene(
-      [1, 3, 8],
-      [28, 12, 42],
-      [96, 240, 80],
-      [214, 72, 255],
-      [255, 104, 46],
+      [2, 3, 8],
+      [8, 18, 16],
+      [45, 225, 185],
+      [230, 55, 38],
+      [255, 105, 32],
       { x: 0.74, y: 0.1, radius: 0.96, strength: 1.32 },
       {
         displayMode: 0.3,
@@ -622,12 +635,13 @@ export const slides = [
     kicker: 'Target',
     title: 'What a good claw gives you',
     layout: 'closing',
+    // ref-3: multicolor (grand finale)
     scene: scene(
-      [1, 2, 6],
-      [16, 12, 18],
-      [116, 255, 88],
-      [210, 54, 255],
-      [255, 116, 48],
+      [2, 2, 6],
+      [16, 8, 12],
+      [255, 210, 45],
+      [210, 65, 250],
+      [255, 145, 50],
       { x: 0.84, y: 0.08, radius: 1.08, strength: 1.48 },
       {
         displayMode: 0.54,

@@ -101,41 +101,42 @@ void main(){
   vec3 c = vec3(0.0);
 
   // ── 1. BACKGROUND + BLOOM ──────────────────────────────────
-  c = u_base * 0.12;
+  c = u_base * 0.10;
 
   // radial bloom from light source
   vec2 lp = u_lightPos;
   float dL = length((uv - lp) * vec2(aspect, 1.0));
   float bR = 0.42 + u_lightRadius * 0.36;
   float bloom = exp(-dL*dL / (bR*bR*0.5));
-  c += u_warning * bloom * (0.11 + u_warningBias*0.08);
-  c += u_edge    * bloom * 0.6 * (0.09 + u_contourBias*0.07);
-  c += u_ambient * bloom * 0.3 * (0.06 + u_latticeBias*0.06);
+  c += u_warning * bloom * (0.22 + u_warningBias*0.14);
+  c += u_edge    * bloom * 0.6 * (0.16 + u_contourBias*0.12);
+  c += u_ambient * bloom * 0.4 * (0.12 + u_latticeBias*0.10);
 
   // side glows
-  c += u_warning * smoothstep(0.24, 0.0, uv.x)  * (0.10 + u_warningBias*0.06);
-  c += u_ambient * smoothstep(0.78, 1.0, uv.x)  * (0.08 + u_contourBias*0.05);
+  c += u_warning * smoothstep(0.28, 0.0, uv.x) * (0.18 + u_warningBias*0.10);
+  c += u_ambient * smoothstep(0.74, 1.0, uv.x) * (0.14 + u_contourBias*0.08);
 
   // top / bottom bands
-  c += mix(u_warning, u_edge, uv.x) * smoothstep(0.09, 0.0, uv.y) * 0.06;
-  c += u_ambient * smoothstep(0.91, 1.0, uv.y) * 0.08;
+  c += mix(u_warning, u_edge, uv.x) * smoothstep(0.09, 0.0, uv.y) * 0.12;
+  c += u_ambient * smoothstep(0.91, 1.0, uv.y) * 0.14;
 
-  // animated sweep line
-  float sweepX = 0.1 + mod(t*0.018 + u_driftA*0.04 + u_deckProgress*0.3, 0.82);
-  float sweep = exp(-pow((uv.x - sweepX) / 0.09, 2.0));
-  c += u_warning * sweep * (0.05 + u_scanBias*0.04)
+  // animated sweep line — very slow pan
+  float sweepX = 0.1 + mod(t*0.006 + u_deckProgress*0.3, 0.82);
+  float sweep = exp(-pow((uv.x - sweepX) / 0.12, 2.0));
+  c += u_warning * sweep * (0.06 + u_scanBias*0.04)
        * step(0.04, uv.y) * step(uv.y, 0.96);
 
-  // ── 2. SCANLINES ───────────────────────────────────────────
-  float scanStep = max(4.0, u_res.y / (78.0 + u_density*28.0));
+  // ── 2. SCANLINES ─────────────────────────────────────────────
+  float scanStep = max(3.0, u_res.y / (100.0 + u_density*30.0));
   float scanY = mod(gl_FragCoord.y, scanStep);
-  c += vec3(smoothstep(1.0, 0.0, scanY) * (0.018 + u_scanBias*0.018));
+  float scanLine = smoothstep(1.5, 0.0, scanY);
+  c += u_ambient * scanLine * (0.04 + u_scanBias*0.04);
 
-  // sparse heavy horizontal lines
+  // horizontal rules
   float hStep = 1.0 / (10.0 + u_density*4.0);
   float hDist = mod(uv.y + 0.001, hStep);
   float hLine = smoothstep(px.y*1.5, 0.0, min(hDist, hStep - hDist));
-  c += u_edge * hLine * (0.028 + u_contourBias*0.015)
+  c += u_edge * hLine * (0.06 + u_contourBias*0.05)
        * step(0.08, uv.x) * step(uv.x, 0.92);
 
   // ── 3. VERTICAL GRID LINES (with warp) ─────────────────────
@@ -145,13 +146,13 @@ void main(){
     float gt = i / max(1.0, vCount - 1.0);
     float gx = mix(0.18, 0.95, gt);
     float ph = hash(i + 7.0);
-    float warp = sin(t*0.22 + ph*TAU + u_fieldWarp*2.4) * 0.008 * u_fieldWarp;
+    float warp = sin(t*0.04 + ph*TAU + u_fieldWarp*2.4) * 0.005 * u_fieldWarp;
     float xp = gx + warp*(1.0 - 2.0*uv.y);
-    float lw = px.x * (mod(i,3.0)<0.5 ? 1.8 : 1.2);
+    float lw = px.x * (mod(i,3.0)<0.5 ? 2.0 : 1.2);
     float vL = smoothstep(lw, 0.0, abs(uv.x - xp));
     vec3 lc = mod(i,3.0)<0.5
-      ? u_warning * (0.14 + u_warningBias*0.10)
-      : u_ambient * (0.08 + u_latticeBias*0.10);
+      ? u_warning * (0.22 + u_warningBias*0.12)
+      : u_ambient * (0.14 + u_latticeBias*0.10);
     c += lc * vL * step(0.06, uv.y) * step(uv.y, 0.94);
   }
 
@@ -163,25 +164,25 @@ void main(){
     float ry = mix(0.08, 0.94, rt);
     float ph = hash(i + 43.0);
     float u_l = clamp((uv.x - 0.08)/0.87, 0.0, 1.0);
-    float warp = sin(u_l*TAU*(0.8 + u_fieldWarp*1.6) + t*0.14 + ph*TAU)
+    float warp = sin(u_l*TAU*(0.8 + u_fieldWarp*1.6) + t*0.03 + ph*TAU)
                  * 0.01 * u_fieldWarp;
     float pinch = exp(-abs(u_l - 0.55)*(7.0 - u_contourBias*2.0));
     float rowY = ry + warp*pinch;
-    float rAlpha = 0.065 + (1.0 - rt)*0.07 + u_scanBias*0.04;
+    float rAlpha = 0.08 + (1.0 - rt)*0.07 + u_scanBias*0.04;
     vec3 rc = mod(i,4.0)<0.5 ? u_warning : u_ambient;
     c += rc * rAlpha * smoothstep(px.y*1.5, 0.0, abs(uv.y - rowY))
          * step(0.08, uv.x) * step(uv.x, 0.95);
   }
 
   // ── 5. OUTER FRAME ─────────────────────────────────────────
-  c += u_ambient * boxBorder(uv, vec2(0.04,0.045), vec2(0.96,0.935), px.x*1.8) * 0.48;
+  c += u_ambient * boxBorder(uv, vec2(0.04,0.045), vec2(0.96,0.935), px.x*1.6) * 0.45;
 
   // ── 6. FIELD CONTOURS (ref-3 style) ─────────────────────────
   {
     float fcx = 0.52 + (u_beamTilt - 0.5)*0.18 + u_driftB*0.02;
     float fcy = 0.50 + (u_horizon  - 0.5)*0.12 + u_driftC*0.015;
-    float spX = 0.18 + u_aperture*0.23;
-    float spY = 0.12 + u_specimenBias*0.1 + u_radialBias*0.08;
+    float spX = 0.22 + u_aperture*0.28;
+    float spY = 0.16 + u_specimenBias*0.14 + u_radialBias*0.10;
 
     float nContours = 10.0 + u_contourBias*10.0 + u_radialBias*3.0;
     for(float i=0.0; i<24.0; i++){
@@ -192,95 +193,94 @@ void main(){
       float dx = (uv.x - fcx) / max(0.001, spX);
       float ul = clamp(dx*0.5 + 0.5, 0.0, 1.0);
       float pinch = 1.0 - exp(-abs(dx)*(5.0 + u_specimenBias*5.0));
-      float wave = sin(ul*TAU*(1.2 + u_fieldWarp*1.4) + t*0.24 + i*0.18) * 0.02;
-      float drift = sin(t*0.12 + ul*TAU*0.6 + i*0.4) * 0.008;
+      float wave = sin(ul*TAU*(1.2 + u_fieldWarp*1.4) + t*0.04 + i*0.18) * 0.025;
+      float drift = sin(t*0.02 + ul*TAU*0.6 + i*0.4) * 0.010;
       float lineY = fcy + (ct - 0.5)*spY*spread
-                   + wave*pinch*0.34 + drift*(1.0 - pinch);
+                   + wave*pinch*0.45 + drift*(1.0 - pinch);
 
       float d = abs(uv.y - lineY);
-      float la = smoothstep(px.y*2.0, 0.0, d);
+      float la = smoothstep(px.y*3.0, 0.0, d);
       vec3 lc = ct<0.4 ? u_ambient : ct<0.72 ? u_warning : u_edge;
-      c += lc * la * (0.14 + (1.0 - ct)*0.24) * 0.84;
+      c += lc * la * (0.22 + (1.0 - ct)*0.28);
     }
   }
 
-  // ── 7. SPECIMEN COLUMN (ref-1/4 style) ──────────────────────
+  // ── 7. SPECIMEN COLUMN (anchored to grid center) ─────────────
   {
-    float colX  = 0.49 + (u_beamTilt - 0.5)*0.08;
+    // pin to the nearest grid column so it feels integrated
+    float colX  = 0.50;
     float colT  = 0.11;
     float colB  = 0.88;
-    float colW  = 0.082 + u_specimenBias*0.03 + u_commandBias*0.018;
+    float colW  = 0.06 + u_specimenBias*0.02;
     float colH  = colB - colT;
-    float lineA = 0.30 + u_specimenBias*0.24;
+    float lineA = 0.22 + u_specimenBias*0.14;
 
-    // column border
+    // column border — thin, tied to grid
     c += u_warning * boxBorder(uv,
          vec2(colX - colW*0.5, colT),
-         vec2(colX + colW*0.5, colB), px.x*1.5) * lineA;
+         vec2(colX + colW*0.5, colB), px.x*1.4) * lineA * 0.7;
 
-    // center axis
-    float inCol = step(colT - 0.02, uv.y)*step(uv.y, colB + 0.02);
-    c += u_ambient * lineSDF(uv.x, colX, px.x*1.5) * inCol
-         * (0.20 + u_latticeBias*0.14);
+    // center axis — continuous with the vertical grid line at 0.5
+    float inCol = step(colT - 0.01, uv.y)*step(uv.y, colB + 0.01);
+    c += u_ambient * lineSDF(uv.x, colX, px.x*1.2) * inCol
+         * (0.22 + u_latticeBias*0.12);
 
-    // dashed center axis
-    float dashPhase = mod(uv.y*80.0, 2.0);
-    c += u_ambient * lineSDF(uv.x, colX, px.x*1.0) * inCol
-         * step(1.0, dashPhase) * (0.10 + u_latticeBias*0.08);
-
-    // oscillating traces
-    float trCnt = 3.0 + u_specimenBias*3.0;
+    // slow oscillating traces — tight, gentle movement
+    float trCnt = 2.0 + u_specimenBias*2.0;
     float nodeT = (uv.y - colT) / colH;
     float inNode = step(0.0, nodeT)*step(nodeT, 1.0);
 
-    for(float tr=0.0; tr<6.0; tr++){
+    for(float tr=0.0; tr<4.0; tr++){
       if(tr >= trCnt) break;
       float off = (tr - (trCnt-1.0)*0.5) / max(1.0, trCnt - 1.0);
-      float env = pow(max(0.0, sin(nodeT*PI)), 0.65);
-      float nv  = hash(floor(nodeT*60.0)*0.73 + 15.0 + tr*3.7);
-      float wobble = sin(nodeT*TAU*(6.5 + u_scanBias*3.2) + t*(0.62 + tr*0.05) + nv*4.0)*0.22;
-      float inner  = sin(nodeT*TAU*(14.0 + u_contourBias*7.0) - t*0.35 + tr*0.8)*0.08*env;
-      float trX = colX + (wobble + inner + off*0.11)*colW;
+      float env = pow(max(0.0, sin(nodeT*PI)), 0.7);
+      float nv  = hash(floor(nodeT*40.0)*0.73 + 15.0 + tr*3.7);
+      // slow speeds, tight amplitude
+      float wobble = sin(nodeT*TAU*4.0 + t*0.12 + nv*3.0 + tr*1.2)*0.14;
+      float inner  = sin(nodeT*TAU*8.0 - t*0.06 + tr*0.6)*0.05*env;
+      float trX = colX + (wobble + inner + off*0.08)*colW;
       float trLine = smoothstep(px.x*2.5, 0.0, abs(uv.x - trX));
       vec3 trCol = tr >= trCnt - 1.0 ? u_warning : u_edge;
-      c += trCol * trLine * (lineA - tr*0.03) * inNode;
+      c += trCol * trLine * (lineA - tr*0.02) * inNode;
     }
 
-    // blob particles (cell-based, O(1))
-    float blobCnt = 20.0 + u_specimenBias*22.0;
+    // blob particles — slow, stable
+    float blobCnt = 22.0 + u_specimenBias*18.0;
     float cellH = colH / blobCnt;
     float cellIdx = floor((uv.y - colT) / cellH);
     float cellFrac = fract((uv.y - colT) / cellH);
     if(cellIdx >= 0.0 && cellIdx < blobCnt){
       float bt = cellIdx / max(1.0, blobCnt - 1.0);
-      float bx = colX + sin(bt*TAU*7.0 + t*0.8 + cellIdx)*colW*0.18;
-      float bw = (0.22 + hash(cellIdx*1.9 + floor(t*7.0))*0.58)*colW*0.56;
-      float bh = max(2.0*px.y, 0.006);
+      float bEnv = pow(max(0.0, sin(bt * PI)), 0.6);
+      // slow movement, centered on column axis
+      float bx = colX + sin(bt*TAU*3.0 + t*0.08 + cellIdx*0.7)*colW*0.12;
+      float bw = (0.25 + hash(cellIdx*1.9 + floor(t*1.5))*0.45)*colW*0.55;
+      float bh = max(3.0*px.y, 0.007);
       float inBlob = step(abs(uv.x - bx), bw*0.5)
                    * step(abs(cellFrac*cellH - cellH*0.5), bh*0.5);
-      c += u_warning * inBlob * (0.15 + u_warningBias*0.08);
+      c += u_warning * inBlob * (0.18 + u_warningBias*0.08) * (0.4 + bEnv*0.6);
     }
 
-    // right-side emanating wave
+    // right-side emanating wave — slow drift
     float wStart = colX + colW*0.52;
-    float wEnd   = 0.93;
+    float wEnd   = 0.88;
     if(uv.x > wStart && uv.x < wEnd){
       float wt = (uv.x - wStart)/(wEnd - wStart);
       float wEnv = pow(sin(wt*PI), 0.82);
-      float waveY = 0.28 + wt*0.48
-        + sin(wt*TAU*(2.0 + u_fieldWarp*0.8) + t*0.46)*0.06*wEnv
-        + sin(wt*TAU*8.0 - t*0.22)*0.012*wEnv;
-      c += u_warning * smoothstep(px.y*2.5, 0.0, abs(uv.y - waveY))
-           * (0.48 + u_warningBias*0.20);
+      float waveY = 0.32 + wt*0.36
+        + sin(wt*TAU*(1.5 + u_fieldWarp*0.5) + t*0.08)*0.04*wEnv
+        + sin(wt*TAU*5.0 - t*0.04)*0.008*wEnv;
+      c += u_warning * smoothstep(px.y*2.0, 0.0, abs(uv.y - waveY))
+           * (0.28 + u_warningBias*0.10);
     }
 
-    // left-side exponential curve (ref-4)
+    // left-side exponential curve — slow
     float curveStart = colX - colW*0.52;
-    if(uv.x > 0.07 && uv.x < curveStart){
-      float ct2 = (uv.x - 0.07)/(curveStart - 0.07);
-      float curveY = colB - (1.0 - exp(-ct2*3.5))*(colH*0.92);
-      c += u_warning * smoothstep(px.y*2.0, 0.0, abs(uv.y - curveY))
-           * (0.36 + u_warningBias*0.14) * u_specimenBias;
+    if(uv.x > 0.10 && uv.x < curveStart){
+      float ct2 = (uv.x - 0.10)/(curveStart - 0.10);
+      float curveY = colB - (1.0 - exp(-ct2*3.5))*(colH*0.88);
+      c += u_warning * smoothstep(px.y*1.5, 0.0, abs(uv.y - curveY))
+           * (0.22 + u_warningBias*0.08) * u_specimenBias;
     }
   }
 
@@ -295,19 +295,19 @@ void main(){
     float ang  = atan(dp.y, dp.x);
 
     // glow
-    float glow = exp(-dist*dist/(bR*bR*4.0));
-    c += u_warning * glow * (0.06 + u_commandBias*0.05);
-    c += u_edge    * glow * 0.6 * (0.06 + u_contourBias*0.06);
+    float glow = exp(-dist*dist/(bR*bR*3.5));
+    c += u_warning * glow * (0.12 + u_commandBias*0.10);
+    c += u_edge    * glow * 0.6 * (0.10 + u_contourBias*0.10);
 
     // rings
     float ringCnt = 4.0 + u_radialBias*5.0;
     float arcSpan = PI*(0.72 + u_radialBias*0.18);
-    float arcStart = -PI*0.82 + sin(t*0.18 + u_driftC)*0.12;
+    float arcStart = -PI*0.82 + sin(t*0.03 + u_driftC)*0.08;
     for(float r=0.0; r<10.0; r++){
       if(r >= ringCnt) break;
       float rt = r / max(1.0, ringCnt - 1.0);
       float radius = bR*(0.62 + rt*1.9);
-      float rLine = smoothstep(px.x*2.0, 0.0, abs(dist - radius));
+      float rLine = smoothstep(px.x*2.2, 0.0, abs(dist - radius));
 
       // segment gaps
       float segN = 10.0 + r*2.0 + u_commandBias*4.0;
@@ -319,30 +319,30 @@ void main(){
 
       vec3 rc = mod(r,3.0)<0.5 ? u_warning
               : mod(r,2.0)<0.5 ? u_ambient : u_edge;
-      c += rc * rLine * (0.24 + (1.0 - rt)*0.34);
+      c += rc * rLine * (0.24 + (1.0 - rt)*0.28);
     }
 
     // spokes
     float spCnt = 8.0 + u_commandBias*6.0;
     for(float s=0.0; s<16.0; s++){
       if(s >= spCnt) break;
-      float sAng = -PI*0.5 + s/spCnt*TAU + sin(t*0.24+s)*0.012;
+      float sAng = -PI*0.5 + s/spCnt*TAU + sin(t*0.04+s)*0.006;
       float aDist = abs(mod(ang - sAng + PI, TAU) - PI);
       float spLine = smoothstep(px.x*2.5/max(0.01,dist), 0.0, aDist);
       spLine *= step(bR*0.44, dist)*step(dist, bR*(2.05+u_radialBias*0.66));
-      c += u_ambient * spLine * (0.34 + u_commandBias*0.20);
+      c += u_ambient * spLine * (0.28 + u_commandBias*0.16);
     }
 
     // crosshair
     float crH = smoothstep(px.y*2.0,0.0,abs(dp.y))*step(abs(dp.x),bR*0.28);
     float crV = smoothstep(px.x*2.0,0.0,abs(dp.x))*step(abs(dp.y),bR*0.28);
-    c += u_warning*(crH+crV)*(0.66 + u_warningBias*0.18);
+    c += u_warning*(crH+crV)*(0.50 + u_warningBias*0.14);
 
     // rotating wedge
-    float wAng = -PI*0.5 + sin(t*0.3 + u_deckProgress*TAU)*0.1;
+    float wAng = -PI*0.5 + sin(t*0.05 + u_deckProgress*TAU)*0.06;
     float wDist = abs(mod(ang - wAng + PI, TAU) - PI);
     c += u_warning * step(wDist,0.12)*step(dist, bR*(1.8+u_radialBias*0.5))
-         * (0.085 + u_warningBias*0.05);
+         * (0.15 + u_warningBias*0.10);
 
     // info boxes near command center
     float boxH = 0.042;
@@ -352,20 +352,20 @@ void main(){
     vec2 lb1 = lb0 + vec2(boxW, boxH);
     float lbF = boxFill(uv, lb0, lb1);
     c = mix(c, vec3(0.04,0.024,0.008), lbF*0.72);
-    c += u_warning * boxBorder(uv, lb0, lb1, px.x*1.5) * 0.82;
+    c += u_warning * boxBorder(uv, lb0, lb1, px.x*1.5) * 0.60;
 
     vec2 rb0 = cmdC + vec2(bR*0.68/aspect, -bR*2.22);
     vec2 rb1 = rb0 + vec2(boxW, boxH);
     float rbF = boxFill(uv, rb0, rb1);
     c = mix(c, vec3(0.04,0.024,0.008), rbF*0.72);
-    c += u_warning * boxBorder(uv, rb0, rb1, px.x*1.5) * 0.82;
+    c += u_warning * boxBorder(uv, rb0, rb1, px.x*1.5) * 0.60;
   }
 
   // ── 9. CROSS MARKERS (ref-5 style) ─────────────────────────
   {
     float cSpX = 0.165;  // (0.83-0.17)/4
     float cSpY = 0.28;   // (0.78-0.22)/2
-    float arm  = 0.018;
+    float arm  = 0.022;
 
     // nearest marker via rounding
     float nX = clamp(round((uv.x - 0.17)/cSpX)*cSpX + 0.17, 0.17, 0.83);
@@ -374,27 +374,35 @@ void main(){
     float isCenter = step(abs(nX-0.5),0.01)*step(abs(nY-0.5),0.01);
 
     vec2 md = abs(uv - vec2(nX, nY));
-    float crH = step(md.y, px.y*1.5)*step(md.x, arm);
-    float crV = step(md.x, px.x*1.5)*step(md.y, arm);
-    c += u_warning*(crH+crV)*0.46*(1.0 - isCenter);
+    float crH = step(md.y, px.y*2.0)*step(md.x, arm);
+    float crV = step(md.x, px.x*2.0)*step(md.y, arm);
+    c += u_warning*(crH+crV)*0.45*(1.0 - isCenter);
   }
 
   // ── 10. INTERFERENCE OVALS (ref-5 center pattern) ──────────
   {
-    vec2 oc = vec2(0.50, 0.48);
-    float od = length((uv - oc)*vec2(aspect*0.6, 1.0));
-    float ovals = abs(sin(od*28.0 + t*0.15))*smoothstep(0.28,0.0,od);
-    c += u_ambient * ovals * 0.08 * u_radialBias;
+    vec2 oc = vec2(0.50, 0.46);
+    float od = length((uv - oc)*vec2(aspect*0.55, 1.0));
+    // multiple concentric rings with line-like edges
+    float ringDist = od * 32.0 + t*0.02;
+    float ringLine = smoothstep(0.4, 0.0, abs(fract(ringDist) - 0.5) - 0.3);
+    float fade = smoothstep(0.34, 0.0, od);
+    c += u_ambient * ringLine * fade * (0.12 + u_radialBias*0.10);
+    // additional warm oval set offset
+    vec2 oc2 = vec2(0.48, 0.50);
+    float od2 = length((uv - oc2)*vec2(aspect*0.7, 1.0));
+    float ring2 = smoothstep(0.4, 0.0, abs(fract(od2*24.0 - t*0.015) - 0.5) - 0.3);
+    c += u_warning * ring2 * smoothstep(0.28, 0.0, od2) * 0.08 * u_radialBias;
   }
 
   // ── 11. SMALL ORBS (ref-1 planetary bodies) ────────────────
   {
-    vec2 orb1 = vec2(0.24, 0.38 + sin(t*0.08)*0.01);
-    vec2 orb2 = vec2(0.22, 0.72 + sin(t*0.06+1.0)*0.01);
-    float o1 = smoothstep(0.018,0.012, length((uv-orb1)*vec2(aspect,1.0)));
-    float o2 = smoothstep(0.014,0.009, length((uv-orb2)*vec2(aspect,1.0)));
-    c += u_warning * o1 * 0.35 * u_specimenBias;
-    c += mix(u_warning, u_ambient, 0.5) * o2 * 0.30 * u_specimenBias;
+    vec2 orb1 = vec2(0.24, 0.38 + sin(t*0.015)*0.005);
+    vec2 orb2 = vec2(0.22, 0.72 + sin(t*0.012+1.0)*0.005);
+    float o1 = smoothstep(0.020,0.012, length((uv-orb1)*vec2(aspect,1.0)));
+    float o2 = smoothstep(0.016,0.009, length((uv-orb2)*vec2(aspect,1.0)));
+    c += u_warning * o1 * 0.30 * u_specimenBias;
+    c += mix(u_warning, u_ambient, 0.5) * o2 * 0.22 * u_specimenBias;
   }
 
   // ── 12. TELEMETRY HUD ──────────────────────────────────────
@@ -402,9 +410,9 @@ void main(){
   float topY = 0.08;
   float botY = 0.92;
   c += u_ambient * smoothstep(px.y*1.5,0.0,abs(uv.y-topY))
-       * step(0.05,uv.x)*step(uv.x,0.95) * 0.62;
+       * step(0.05,uv.x)*step(uv.x,0.95) * 0.50;
   c += u_ambient * smoothstep(px.y*1.5,0.0,abs(uv.y-botY))
-       * step(0.05,uv.x)*step(uv.x,0.95) * 0.62;
+       * step(0.05,uv.x)*step(uv.x,0.95) * 0.50;
 
   // tick marks along top/bottom
   {
@@ -419,7 +427,7 @@ void main(){
                   * step(topY, uv.y)*step(uv.y, topY + tickH);
     float botTick = step(tickDist*0.9, px.x*1.5)
                   * step(botY - tickH, uv.y)*step(uv.y, botY);
-    c += u_ambient * (topTick + botTick) * 0.62;
+    c += u_ambient * (topTick + botTick) * 0.50;
   }
 
   // left ruler ticks
@@ -435,14 +443,14 @@ void main(){
     float rTick = step(rDist*rulerStep, px.y*1.5)
                 * step(rulerX, uv.x)*step(uv.x, rulerX + tickW)
                 * step(topY, uv.y)*step(uv.y, botY);
-    c += u_ambient * rTick * 0.72;
+    c += u_ambient * rTick * 0.55;
 
     // small number-like marks next to major ticks
     float numMark = step(rDist*rulerStep, px.y*1.2) * rMajor
                   * step(rulerX + tickW + 0.004, uv.x)
                   * step(uv.x, rulerX + tickW + 0.024)
                   * step(topY, uv.y)*step(uv.y, botY);
-    c += u_warning * numMark * 0.45;
+    c += u_warning * numMark * 0.40;
   }
 
   // top info boxes (dark-filled + orange border, ref-1 style)
@@ -452,27 +460,27 @@ void main(){
     vec2 tlb1 = vec2(0.32, 0.094);
     float tlbF = boxFill(uv, tlb0, tlb1);
     c = mix(c, vec3(0.04,0.024,0.008), tlbF*0.72);
-    c += u_warning * boxBorder(uv, tlb0, tlb1, px.x*1.2) * 0.84;
+    c += u_warning * boxBorder(uv, tlb0, tlb1, px.x*1.2) * 0.65;
 
     // simulated text lines inside
     float tl1 = step(tlb0.x+0.012, uv.x)*step(uv.x, tlb1.x-0.04)
               * step(abs(uv.y - 0.055), px.y*1.0);
     float tl2 = step(tlb0.x+0.012, uv.x)*step(uv.x, tlb1.x-0.08)
               * step(abs(uv.y - 0.077), px.y*1.0);
-    c += u_warning * (tl1*0.7 + tl2*0.5);
+    c += u_warning * (tl1*0.55 + tl2*0.40);
 
     // right box
     vec2 trb0 = vec2(0.74, 0.03);
     vec2 trb1 = vec2(0.93, 0.094);
     float trbF = boxFill(uv, trb0, trb1);
     c = mix(c, vec3(0.04,0.024,0.008), trbF*0.72);
-    c += u_warning * boxBorder(uv, trb0, trb1, px.x*1.2) * 0.84;
+    c += u_warning * boxBorder(uv, trb0, trb1, px.x*1.2) * 0.65;
 
     float tr1 = step(trb0.x+0.012, uv.x)*step(uv.x, trb1.x-0.02)
               * step(abs(uv.y - 0.055), px.y*1.0);
     float tr2 = step(trb0.x+0.012, uv.x)*step(uv.x, trb1.x-0.06)
               * step(abs(uv.y - 0.077), px.y*1.0);
-    c += u_warning * (tr1*0.7 + tr2*0.5);
+    c += u_warning * (tr1*0.55 + tr2*0.40);
   }
 
   // status bands near top (ref-5 AT FIELD bands)
@@ -485,49 +493,44 @@ void main(){
       vec2 b0 = vec2(bx, bandY);
       vec2 b1 = vec2(bx + bandW, bandY + bandH);
       float bF = boxFill(uv, b0, b1);
-      c = mix(c, vec3(0.04,0.024,0.008), bF*0.64);
+      c = mix(c, vec3(0.04,0.024,0.008), bF*0.72);
       c += u_warning * boxBorder(uv, b0, b1, px.x*1.0)
-           * (0.82 - i*0.04);
+           * (0.55 - i*0.04);
       // text line inside
       float tl = step(b0.x+0.006, uv.x)*step(uv.x, b1.x-0.01)
                * step(abs(uv.y - (bandY + bandH*0.5)), px.y*1.0);
-      c += (i<0.5 ? u_warning : u_ambient) * tl * 0.6;
+      c += (i<0.5 ? u_warning : u_ambient) * tl * 0.45;
     }
   }
 
-  // bottom-right warning box (ref-1 "APPROACHING LIMITS")
+  // bottom-right warning box (ref-1 style)
   {
-    float wBoxAlpha = max(0.0, u_pulse)*0.3 + u_warningBias*0.2;
+    float wBoxAlpha = max(0.0, u_pulse)*0.4 + u_warningBias*0.3;
     vec2 w0 = vec2(0.68, 0.85);
     vec2 w1 = vec2(0.93, 0.92);
     float wF = boxFill(uv, w0, w1);
-    c = mix(c, u_warning*0.08, wF*wBoxAlpha);
-    c += u_warning * boxBorder(uv, w0, w1, px.x*1.2) * (0.6 + wBoxAlpha);
+    c = mix(c, u_warning*0.12, wF*wBoxAlpha);
+    c += u_warning * boxBorder(uv, w0, w1, px.x*1.2) * (0.50 + wBoxAlpha);
     // text lines
     float wt1 = step(w0.x+0.01, uv.x)*step(uv.x, w1.x-0.03)
               * step(abs(uv.y - 0.875), px.y*1.0);
     float wt2 = step(w0.x+0.01, uv.x)*step(uv.x, w1.x-0.06)
               * step(abs(uv.y - 0.895), px.y*1.0);
-    c += u_warning * (wt1+wt2) * (0.5 + wBoxAlpha);
+    c += u_warning * (wt1+wt2) * (0.40 + wBoxAlpha);
   }
 
   // ── 13. READABILITY MASK ───────────────────────────────────
-  // darken left side for text readability
-  float leftMask = mix(0.9 - u_readMask*0.14,
-                        0.0,
-                        smoothstep(0.0, 0.54, uv.x));
-  float leftFade = mix(0.72 - u_readMask*0.18,
-                        0.18 + u_commandBias*0.08,
-                        smoothstep(0.0, 0.86, uv.x));
-  c *= 1.0 - max(leftMask, 0.0)*0.7;
+  // gentle darken on left side for text readability
+  float leftMask = smoothstep(0.42, 0.0, uv.x) * 0.45;
+  c *= 1.0 - leftMask;
 
-  // center darkening
-  float cMask = exp(-length(uv - vec2(0.34,0.42))*3.5);
-  c *= 1.0 - cMask*(0.3 + u_specimenBias*0.04);
+  // subtle center darkening
+  float cMask = exp(-length(uv - vec2(0.34,0.42))*4.0);
+  c *= 1.0 - cMask*0.18;
 
   // vignette
   float vig = length(uv - 0.5)*1.28;
-  c *= 1.0 - smoothstep(0.5, 1.1, vig)*0.7;
+  c *= 1.0 - smoothstep(0.6, 1.2, vig)*0.55;
 
   // ── output ─────────────────────────────────────────────────
   o_color = vec4(c, 1.0);
@@ -573,11 +576,11 @@ function deriveContinuousScene(scene, controls, time) {
   const transition = smootherstep(0, 1, localProgress);
   const mode = clamp(scene.system.displayMode ?? 0, 0, 1);
 
-  const driftA = Math.sin(time * 0.17 + deckProgress * tau * 0.6 + slidePosition * 0.15);
-  const driftB = Math.cos(time * 0.11 - slideIndex * tau * 0.42 + 1.1);
-  const driftC = Math.sin(time * 0.06 + mode * tau * 0.8 + 2.7);
-  const driftD = Math.cos(time * 0.037 + deckProgress * tau * 1.35 - 0.8);
-  const pulse = Math.sin(time * (0.42 + calmPulse(scene.system.pulse) * 0.34) + (scene.system.phase ?? 0.5) * tau);
+  const driftA = Math.sin(time * 0.03 + deckProgress * tau * 0.6 + slidePosition * 0.15);
+  const driftB = Math.cos(time * 0.02 - slideIndex * tau * 0.42 + 1.1);
+  const driftC = Math.sin(time * 0.015 + mode * tau * 0.8 + 2.7);
+  const driftD = Math.cos(time * 0.01 + deckProgress * tau * 1.35 - 0.8);
+  const pulse = Math.sin(time * (0.08 + calmPulse(scene.system.pulse) * 0.06) + (scene.system.phase ?? 0.5) * tau);
 
   const specimenBias = clamp(0.88 - deckProgress * 0.34 - mode * 0.28 - (scene.system.sensorField ?? 0) * 0.22 + driftA * 0.04, 0.18, 1);
   const commandBias = clamp(0.22 + (scene.system.defense ?? 0) * 0.34 + mode * 0.18 + deckProgress * 0.22 + transition * 0.08 + driftB * 0.04, 0, 1);
@@ -669,14 +672,18 @@ export function createDeckBackgroundRenderer(canvas) {
       const cs = deriveContinuousScene(scene, controls, time);
       const sl = cs.sliders;
 
-      // compute palette (same logic as the old Canvas 2D renderer)
+      // compute palette — colors come from the slide scene definitions
       const ambient = cs.ambient ?? cs.toxic ?? cs.haze;
       const edge = cs.edge ?? cs.magenta ?? cs.warning ?? ambient;
       const warning = cs.warning ?? edge;
+
+      // gentle time-based brightness breathing (not hue shifting)
+      const breath = 1.0 + Math.sin(time * 0.08) * 0.04;
+
       const pal = {
-        ambient: mixColor(scaleColor(ambient, 1.16), [172, 255, 218], 0.18 + sl.latticeBias * 0.1),
-        edge: mixColor(mixColor(scaleColor(edge, 1), ambient, 0.5), [196, 136, 222], 0.05 + sl.contourBias * 0.06),
-        warning: mixColor(scaleColor(warning, 1.16), [255, 176, 92], 0.24 + sl.warningBias * 0.14),
+        ambient: scaleColor(ambient, 1.1 * breath),
+        edge: scaleColor(edge, 1.05 * breath),
+        warning: scaleColor(warning, 1.15 * breath),
       };
 
       const w = Math.round(state.width * state.dpr);
