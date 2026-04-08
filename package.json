@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "check": "node src/safety-check.mjs",
     "verify": "npm run check && npm run build",
-    "benchmark:bg": "node scripts/benchmark-background.mjs"
+    "benchmark:bg": "node scripts/benchmark-background.mjs",
+    "capture:slides": "npm run build && node scripts/capture-slides.mjs"
   },
   "keywords": [
     "slides",

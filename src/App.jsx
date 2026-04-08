@@ -1,6 +1,7 @@
 import { memo, useEffect, useEffectEvent, useRef, useState } from 'react';
 import { slides } from './slides.js';
 import { createDeckBackgroundRenderer } from './backgroundRenderer.js';
+import { DIAGRAMS } from './diagrams.jsx';
 
 const transitionMs = 520;
 
@@ -76,7 +77,7 @@ function interpolateScene(from, to, amount) {
 
 function renderPanels(items, columns = 'lg:grid-cols-2') {
   return (
-    <div className={`grid gap-4 sm:gap-5 ${columns}`}>
+    <div className={`grid w-full gap-6 sm:gap-8 ${columns}`}>
       {items.map((item) => (
         <Panel key={item.title} item={item} />
       ))}
@@ -84,48 +85,157 @@ function renderPanels(items, columns = 'lg:grid-cols-2') {
   );
 }
 
+function VisualCard({ visual, compact = false }) {
+  if (!visual) return null;
+
+  return (
+    <figure
+      className={`deck-visual ${compact ? 'deck-visual--compact' : ''}`}
+      style={visual.bg ? { background: visual.bg } : undefined}
+    >
+      {visual.badge ? <span className="deck-visual-badge">{visual.badge}</span> : null}
+      {visual.src ? (
+        <img
+          src={visual.src}
+          alt={visual.alt ?? ''}
+          className={`deck-visual-media ${visual.fit === 'contain' ? 'object-contain p-6' : 'object-cover'}`}
+        />
+      ) : (
+        <div className="deck-visual-placeholder" aria-hidden="true" />
+      )}
+      {visual.caption ? <figcaption className="deck-visual-caption">{visual.caption}</figcaption> : null}
+    </figure>
+  );
+}
+
 function renderBody(slide) {
   switch (slide.layout) {
-    case 'trio':
-      return renderPanels(slide.cards, 'lg:grid-cols-3');
-    case 'split':
-      return renderPanels(slide.panels);
-    case 'split-note':
+    case 'hero':
       return (
-        <div className="space-y-4 sm:space-y-5">
-          {renderPanels(slide.panels)}
-          <div className="deck-note">{slide.note}</div>
+        <div className="grid flex-1 gap-5 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+          <div className="space-y-5">
+            {slide.lede ? <p className="deck-lede">{slide.lede}</p> : null}
+            {slide.chips ? (
+              <div className="flex flex-wrap gap-2 sm:gap-3">
+                {slide.chips.map((chip) => (
+                  <span key={chip} className="deck-chip">
+                    {chip}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {slide.facts ? (
+              <div className="grid gap-3 sm:grid-cols-3">
+                {slide.facts.map((fact) => (
+                  <article key={fact.label} className="deck-fact">
+                    <p className="deck-fact-value">{fact.value}</p>
+                    <p className="deck-fact-label">{fact.label}</p>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+            {slide.note ? <div className="deck-note">{slide.note}</div> : null}
+          </div>
+          <div className="space-y-4">
+            <VisualCard visual={slide.visual} />
+            {slide.panels ? renderPanels(slide.panels) : null}
+          </div>
         </div>
       );
-    case 'steps':
+    case 'quote':
       return (
-        <div className="space-y-4 sm:space-y-5">
-          <div
-            className={`grid gap-3 sm:gap-4 md:grid-cols-2 ${
-              slide.steps.length > 4 ? 'xl:grid-cols-5' : 'xl:grid-cols-4'
-            }`}
-          >
-            {slide.steps.map((step, index) => (
-              <article
-                key={`${step.title}-${index}`}
-                className={`deck-panel min-h-0 sm:min-h-40 ${ACCENT_CLASS[step.accent] ?? 'border-white/10 bg-white/[0.05]'}`}
-              >
-                <p className="deck-label">{String(index + 1).padStart(2, '0')}</p>
-                <h3 className="deck-subtitle">{step.title}</h3>
-                {step.body ? <p className="deck-copy text-balance">{step.body}</p> : null}
-              </article>
-            ))}
+        <div className="grid flex-1 gap-5 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
+          <article className="deck-quote-card">
+            <p className="deck-quote-mark">"</p>
+            <blockquote className="deck-quote">{slide.quote}</blockquote>
+            {slide.attribution ? <p className="deck-quote-source">{slide.attribution}</p> : null}
+            {slide.context ? <p className="deck-copy max-w-[36ch]">{slide.context}</p> : null}
+          </article>
+          <div className="space-y-4">
+            <VisualCard visual={slide.visual} compact />
+            {slide.panels ? renderPanels(slide.panels) : null}
           </div>
-          {slide.tags ? (
-            <div className="flex flex-wrap gap-2 sm:gap-3">
-              {slide.tags.map((tag) => (
-                <span key={tag} className="deck-chip">
-                  {tag}
-                </span>
+        </div>
+      );
+    case 'compare':
+      return (
+        <div className="flex flex-1 flex-col gap-5">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <article className="deck-compare-head deck-compare-head--left">
+              <p className="deck-label">{slide.compare.left.label}</p>
+              {slide.compare.left.title ? <h3 className="deck-subtitle">{slide.compare.left.title}</h3> : null}
+              {slide.compare.left.body ? <p className="deck-copy max-w-[34ch]">{slide.compare.left.body}</p> : null}
+            </article>
+            <article className="deck-compare-head deck-compare-head--right">
+              <p className="deck-label">{slide.compare.right.label}</p>
+              {slide.compare.right.title ? <h3 className="deck-subtitle">{slide.compare.right.title}</h3> : null}
+              {slide.compare.right.body ? <p className="deck-copy max-w-[34ch]">{slide.compare.right.body}</p> : null}
+            </article>
+          </div>
+          {slide.compare.rows.length > 0 ? (
+            <div className="flex flex-1 flex-col justify-center gap-3">
+              {slide.compare.rows.map((row) => (
+                <article key={row.topic} className="deck-compare-row">
+                  <div className="deck-compare-topic">{row.topic}</div>
+                  <div className="deck-compare-cell">{row.left}</div>
+                  <div className="deck-compare-cell">{row.right}</div>
+                </article>
               ))}
             </div>
           ) : null}
           {slide.note ? <div className="deck-note">{slide.note}</div> : null}
+        </div>
+      );
+    case 'trio':
+      return (
+        <div className="flex flex-1 items-center">
+          {renderPanels(slide.cards, 'lg:grid-cols-3')}
+        </div>
+      );
+    case 'split':
+      return renderPanels(slide.panels);
+    case 'split-note':
+      return (
+        <div className="flex flex-1 flex-col justify-center gap-5">
+          {renderPanels(slide.panels)}
+          {slide.note ? <div className="deck-note">{slide.note}</div> : null}
+        </div>
+      );
+    case 'diagram': {
+      const DiagramComponent = DIAGRAMS[slide.diagramId];
+      return (
+        <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+          <div className="deck-diagram">
+            {DiagramComponent ? <DiagramComponent /> : null}
+          </div>
+          {slide.steps ? (
+            <div className="deck-steps-grid deck-steps-grid--compact">
+              {slide.steps.map((step, index) => (
+                <article
+                  key={`${step.title}-${index}`}
+                  className={`deck-step-item ${step.accent ? `deck-step--${step.accent}` : ''}`}
+                >
+                  <h3 className="deck-step-title">{step.title}</h3>
+                  {step.body ? <p className="deck-step-body">{step.body}</p> : null}
+                </article>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      );
+    }
+    case 'steps':
+      return (
+        <div className="deck-steps-grid">
+          {slide.steps.map((step, index) => (
+            <article
+              key={`${step.title}-${index}`}
+              className={`deck-step-item ${step.accent ? `deck-step--${step.accent}` : ''}`}
+            >
+              <h3 className="deck-step-title">{step.title}</h3>
+              {step.body ? <p className="deck-step-body">{step.body}</p> : null}
+            </article>
+          ))}
         </div>
       );
     case 'metrics':
@@ -143,7 +253,7 @@ function renderBody(slide) {
       return (
         <div className="grid gap-4 sm:gap-5 lg:grid-cols-[1.1fr_0.9fr]">
           <article className="deck-panel">
-            <h3 className="deck-subtitle">Current claws</h3>
+            <h3 className="deck-subtitle">{slide.namesTitle ?? 'Current claws'}</h3>
             <div className="mt-4 grid gap-3 sm:mt-5 sm:grid-cols-2">
               {slide.names.map((name) => (
                 <span key={name} className="deck-chip text-center text-base text-white sm:text-lg">
@@ -158,14 +268,20 @@ function renderBody(slide) {
         </div>
       );
     case 'grid':
-      return renderPanels(slide.cards);
+      return (
+        <div className="flex flex-1 items-center">
+          {renderPanels(slide.cards)}
+        </div>
+      );
     case 'closing':
       return (
-        <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-1 flex-col justify-center gap-6">
           {renderPanels(slide.cards, 'lg:grid-cols-3')}
-          <p className="max-w-[26ch] text-balance text-xl font-semibold leading-tight text-white/95 sm:text-3xl">
-            {slide.closing}
-          </p>
+          {slide.closing ? (
+            <p className="max-w-[26ch] text-balance text-xl font-semibold leading-tight text-white/95 sm:text-3xl">
+              {slide.closing}
+            </p>
+          ) : null}
         </div>
       );
     default:
@@ -196,7 +312,13 @@ function DeckBackground({ activeIndex }) {
 
     const state = stateRef.current;
     state.media = window.matchMedia('(prefers-reduced-motion: reduce)');
-    state.renderer = createDeckBackgroundRenderer(canvas);
+    try {
+      state.renderer = createDeckBackgroundRenderer(canvas);
+    } catch (error) {
+      state.renderer = null;
+      canvas.style.display = 'none';
+      console.warn('Deck background disabled:', error);
+    }
 
     const renderFrame = (scene, timeMs, position, localProgress) => {
       state.renderer?.render(scene, timeMs, {
@@ -360,11 +482,12 @@ const SlideCard = memo(function SlideCard({ slide, state, direction }) {
       data-layout={slide.layout}
       data-slide={slide.id}
       data-state={state}
+      data-title-size={slide.titleSize ?? 'default'}
     >
       <div className="deck-frame" data-layout={slide.layout}>
-        <p className="deck-kicker">{slide.kicker}</p>
+        {slide.kicker ? <p className="deck-kicker">{slide.kicker}</p> : null}
         <h1 className="deck-title">{slide.title}</h1>
-        {renderBody(slide)}
+        <div className="deck-body">{renderBody(slide)}</div>
       </div>
     </section>
   );
