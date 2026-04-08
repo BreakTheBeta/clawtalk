@@ -127,7 +127,7 @@ function LanesDiagram() {
       {/* ── Session store bridge ── */}
       <rect x="10" y="296" width="500" height="34" rx="8" fill="rgba(255,255,255,0.02)" stroke={C.faint} strokeWidth="0.8" strokeDasharray="4 3" />
       <text x="260" y="316" textAnchor="middle" fill={C.dim} fontSize="8.5" fontFamily={mono}>
-        Lanes don't share data — session store is the bridge between parent ↔ child
+        Lanes don't share data — results flow through session store, not transcripts
       </text>
     </svg>
   );
@@ -176,11 +176,11 @@ function HeartbeatDiagram() {
 
       {/* HEARTBEAT.md config box */}
       <rect x="30" y="210" width="440" height="88" rx="10" fill="rgba(255,255,255,0.02)" stroke={C.faint} strokeWidth="1" strokeDasharray="4 3" />
-      <text x="48" y="232" fill={C.white} fontSize="10" fontWeight="700" fontFamily={mono}>HEARTBEAT.md</text>
+      <text x="48" y="232" fill={C.white} fontSize="10" fontWeight="700" fontFamily={mono}>openclaw.json</text>
       <text x="48" y="252" fill={C.dim} fontSize="9" fontFamily={sans}>
-        <tspan x="48" dy="0">• Task intervals &amp; schedule definitions</tspan>
+        <tspan x="48" dy="0">• Heartbeat intervals &amp; schedule config</tspan>
         <tspan x="48" dy="16">• Active hours &amp; timezone configuration</tspan>
-        <tspan x="48" dy="16">• Delivery targets: announce, webhook, or silent</tspan>
+        <tspan x="48" dy="16">• Delivery targets: announce, webhook, or none</tspan>
       </text>
     </svg>
   );
@@ -193,7 +193,7 @@ function CoreDocsDiagram() {
     { file: 'SOUL.md', desc: 'Core identity & personality', color: C.cyan, bg: C.cyanBg, border: C.cyanBorder },
     { file: 'AGENTS.md', desc: 'Behavioral guidelines & roles', color: C.orange, bg: C.orangeBg, border: C.orangeBorder },
     { file: 'IDENTITY.md', desc: 'Agent metadata & traits', color: C.teal, bg: C.tealBg, border: C.tealBorder },
-    { file: 'TOOLS.md', desc: 'Available capabilities', color: C.purple, bg: C.purpleBg, border: C.purpleBorder },
+    { file: 'TOOLS.md', desc: 'Local env notes & tool guidance', color: C.purple, bg: C.purpleBg, border: C.purpleBorder },
     { file: 'MEMORY.md', desc: 'Learned context & knowledge', color: C.cyan, bg: C.cyanBg, border: C.cyanBorder },
     { file: 'HEARTBEAT.md', desc: 'Periodic task schedules', color: C.orange, bg: C.orangeBg, border: C.orangeBorder },
     { file: 'BOOTSTRAP.md', desc: 'System prompt instructions', color: C.teal, bg: C.tealBg, border: C.tealBorder },
@@ -323,8 +323,8 @@ function CronDiagram() {
 
   const sessions = [
     { label: 'main', y: 32, color: C.cyan },
-    { label: 'cron:<jobId>', y: 60, color: C.orange },
-    { label: 'custom', y: 88, color: C.teal },
+    { label: 'isolated', y: 60, color: C.orange },
+    { label: 'session:<id>', y: 88, color: C.teal },
   ];
 
   const deliveries = [
@@ -385,7 +385,7 @@ function CronDiagram() {
 
 function TaskLifecycleDiagram() {
   return (
-    <svg viewBox="0 0 520 300" fill="none" className="w-full h-auto">
+    <svg viewBox="0 0 520 380" fill="none" className="w-full h-auto">
       <defs>
         <ArrowMarker id="tl" />
         <ArrowMarker id="tlc" color={C.cyan} />
@@ -428,26 +428,36 @@ function TaskLifecycleDiagram() {
       <rect x="410" y="58" width="100" height="40" rx="8" fill="rgba(248,113,113,0.06)" stroke="rgba(248,113,113,0.35)" strokeWidth="1.2" />
       <text x="460" y="82" textAnchor="middle" fill={C.red} fontSize="10" fontWeight="700" fontFamily={mono}>FAILED</text>
 
+      {/* TIMED_OUT */}
+      <line x1="370" y1="90" x2="408" y2="118" stroke="rgba(251,191,36,0.3)" strokeWidth="1.2" markerEnd="url(#tl)" />
+      <rect x="410" y="100" width="100" height="40" rx="8" fill="rgba(251,191,36,0.06)" stroke="rgba(251,191,36,0.35)" strokeWidth="1.2" />
+      <text x="460" y="124" textAnchor="middle" fill={C.yellow} fontSize="10" fontWeight="700" fontFamily={mono}>TIMED_OUT</text>
+
+      {/* CANCELLED */}
+      <line x1="370" y1="96" x2="408" y2="158" stroke="rgba(167,139,250,0.3)" strokeWidth="1.2" markerEnd="url(#tl)" />
+      <rect x="410" y="142" width="100" height="40" rx="8" fill={C.purpleBg} stroke={C.purpleBorder} strokeWidth="1.2" />
+      <text x="460" y="166" textAnchor="middle" fill={C.purple} fontSize="10" fontWeight="700" fontFamily={mono}>CANCELLED</text>
+
       {/* LOST */}
-      <line x1="370" y1="90" x2="408" y2="118" stroke="rgba(255,255,255,0.15)" strokeWidth="1.2" markerEnd="url(#tl)" />
-      <rect x="410" y="100" width="100" height="40" rx="8" fill="rgba(255,255,255,0.03)" stroke={C.faint} strokeWidth="1.2" />
-      <text x="460" y="124" textAnchor="middle" fill={C.dim} fontSize="10" fontWeight="700" fontFamily={mono}>LOST</text>
+      <line x1="370" y1="100" x2="408" y2="200" stroke="rgba(255,255,255,0.15)" strokeWidth="1.2" markerEnd="url(#tl)" />
+      <rect x="410" y="190" width="100" height="40" rx="8" fill="rgba(255,255,255,0.03)" stroke={C.faint} strokeWidth="1.2" />
+      <text x="460" y="214" textAnchor="middle" fill={C.dim} fontSize="10" fontWeight="700" fontFamily={mono}>LOST</text>
 
       {/* Storage & reconciliation */}
-      <rect x="10" y="168" width="500" height="42" rx="8" fill="rgba(255,255,255,0.02)" stroke={C.faint} strokeWidth="0.8" strokeDasharray="4 3" />
-      <text x="260" y="186" textAnchor="middle" fill={C.dim} fontSize="8.5" fontFamily={mono}>SQLite · 7-day retention · Auto-reconciliation</text>
-      <text x="260" y="200" textAnchor="middle" fill={C.faint} fontSize="8" fontFamily={mono} fontStyle="italic">Managed or mirrored orchestration</text>
+      <rect x="10" y="252" width="500" height="42" rx="8" fill="rgba(255,255,255,0.02)" stroke={C.faint} strokeWidth="0.8" strokeDasharray="4 3" />
+      <text x="260" y="270" textAnchor="middle" fill={C.dim} fontSize="8.5" fontFamily={mono}>SQLite · 7-day retention · Auto-reconciliation</text>
+      <text x="260" y="284" textAnchor="middle" fill={C.faint} fontSize="8" fontFamily={mono} fontStyle="italic">Managed or mirrored orchestration</text>
 
       {/* Managed vs Mirrored */}
-      <rect x="10" y="228" width="240" height="60" rx="8" fill={C.cyanBg} stroke={C.cyanBorder} strokeWidth="1" />
-      <text x="26" y="248" fill={C.cyan} fontSize="10" fontWeight="700" fontFamily={mono}>MANAGED MODE</text>
-      <text x="26" y="266" fill={C.dim} fontSize="8.5" fontFamily={sans}>System controls task lifecycle.</text>
-      <text x="26" y="278" fill={C.dim} fontSize="8.5" fontFamily={sans}>Queue → assign → track → cleanup</text>
+      <rect x="10" y="310" width="240" height="60" rx="8" fill={C.cyanBg} stroke={C.cyanBorder} strokeWidth="1" />
+      <text x="26" y="330" fill={C.cyan} fontSize="10" fontWeight="700" fontFamily={mono}>MANAGED MODE</text>
+      <text x="26" y="348" fill={C.dim} fontSize="8.5" fontFamily={sans}>System controls task lifecycle.</text>
+      <text x="26" y="360" fill={C.dim} fontSize="8.5" fontFamily={sans}>Queue → assign → track → cleanup</text>
 
-      <rect x="270" y="228" width="240" height="60" rx="8" fill={C.orangeBg} stroke={C.orangeBorder} strokeWidth="1" />
-      <text x="286" y="248" fill={C.orange} fontSize="10" fontWeight="700" fontFamily={mono}>MIRRORED MODE</text>
-      <text x="286" y="266" fill={C.dim} fontSize="8.5" fontFamily={sans}>External system drives lifecycle.</text>
-      <text x="286" y="278" fill={C.dim} fontSize="8.5" fontFamily={sans}>Reflects external state into tasks DB</text>
+      <rect x="270" y="310" width="240" height="60" rx="8" fill={C.orangeBg} stroke={C.orangeBorder} strokeWidth="1" />
+      <text x="286" y="330" fill={C.orange} fontSize="10" fontWeight="700" fontFamily={mono}>MIRRORED MODE</text>
+      <text x="286" y="348" fill={C.dim} fontSize="8.5" fontFamily={sans}>External system drives lifecycle.</text>
+      <text x="286" y="360" fill={C.dim} fontSize="8.5" fontFamily={sans}>Reflects external state into tasks DB</text>
     </svg>
   );
 }

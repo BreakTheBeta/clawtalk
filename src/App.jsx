@@ -110,11 +110,12 @@ function VisualCard({ visual, compact = false }) {
 
 function renderBody(slide) {
   switch (slide.layout) {
-    case 'hero':
+    case 'hero': {
+      const hasVisual = Boolean(slide.visual?.src);
       return (
-        <div className="grid flex-1 gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+        <div className={`grid flex-1 gap-6 ${hasVisual ? 'lg:grid-cols-[1.1fr_0.9fr]' : ''} lg:items-center`}>
           <div className="space-y-6">
-            {slide.lede ? <p className="deck-lede">{slide.lede}</p> : null}
+            {slide.lede ? <p className={`deck-lede ${hasVisual ? '' : 'deck-lede--wide'}`}>{slide.lede}</p> : null}
             {slide.chips?.length ? (
               <div className="flex flex-wrap gap-2 sm:gap-3">
                 {slide.chips.map((chip) => (
@@ -137,11 +138,14 @@ function renderBody(slide) {
             {slide.panels ? renderPanels(slide.panels) : null}
             {slide.note ? <div className="deck-note">{slide.note}</div> : null}
           </div>
-          <div className="flex items-center justify-center">
-            <VisualCard visual={slide.visual} compact={slide.visual?.compact} />
-          </div>
+          {hasVisual ? (
+            <div className="flex items-center justify-center">
+              <VisualCard visual={slide.visual} compact={slide.visual?.compact} />
+            </div>
+          ) : null}
         </div>
       );
+    }
     case 'quote':
       return (
         <div className="grid flex-1 gap-5 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">

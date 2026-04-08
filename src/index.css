@@ -112,6 +112,8 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .deck-kicker,
@@ -214,6 +216,12 @@ body {
   line-height: 1.2;
   color: rgba(246, 250, 255, 0.95);
   text-wrap: balance;
+}
+
+.deck-lede--wide {
+  max-width: 44ch;
+  font-size: clamp(1.4rem, 2.8vw, 2.2rem);
+  line-height: 1.35;
 }
 
 .deck-fact {

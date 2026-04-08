@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const repoRoot = resolve(import.meta.dirname, '..');
@@ -11,8 +11,9 @@ if (!existsSync(sourceDir)) {
 }
 
 mkdirSync(targetDir, { recursive: true });
-rmSync(targetDir, { recursive: true, force: true });
-mkdirSync(targetDir, { recursive: true });
+for (const entry of readdirSync(targetDir)) {
+  rmSync(resolve(targetDir, entry), { recursive: true, force: true });
+}
 cpSync(sourceDir, targetDir, { recursive: true });
 
 console.log(`Published ${sourceDir} to ${targetDir}`);
