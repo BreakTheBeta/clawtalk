@@ -19,3 +19,5 @@ The deck builds to plain static assets in `dist/`, so hosting at `howtoopenclaw.
 
 - Nothing in this repo assumes the domain already exists locally.
 - If the site is hosted under the root of the domain, the current Vite config should work without changes.
+- On this machine, the nginx Docker container serves `howtoopenclaw.islinuxdown.com` from `/Users/will/server/blog/howtoopenclaw-dist`.
+- To publish the current deck to that live location, run `npm run publish:local`.

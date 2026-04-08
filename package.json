@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "publish:local": "npm run build && node scripts/publish-site.mjs",
     "preview": "vite preview",
     "check": "node src/safety-check.mjs",
     "verify": "npm run check && npm run build",

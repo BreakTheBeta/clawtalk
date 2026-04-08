@@ -112,10 +112,10 @@ function renderBody(slide) {
   switch (slide.layout) {
     case 'hero':
       return (
-        <div className="grid flex-1 gap-5 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-          <div className="space-y-5">
+        <div className="grid flex-1 gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+          <div className="space-y-6">
             {slide.lede ? <p className="deck-lede">{slide.lede}</p> : null}
-            {slide.chips ? (
+            {slide.chips?.length ? (
               <div className="flex flex-wrap gap-2 sm:gap-3">
                 {slide.chips.map((chip) => (
                   <span key={chip} className="deck-chip">
@@ -124,7 +124,7 @@ function renderBody(slide) {
                 ))}
               </div>
             ) : null}
-            {slide.facts ? (
+            {slide.facts?.length ? (
               <div className="grid gap-3 sm:grid-cols-3">
                 {slide.facts.map((fact) => (
                   <article key={fact.label} className="deck-fact">
@@ -134,11 +134,11 @@ function renderBody(slide) {
                 ))}
               </div>
             ) : null}
+            {slide.panels ? renderPanels(slide.panels) : null}
             {slide.note ? <div className="deck-note">{slide.note}</div> : null}
           </div>
-          <div className="space-y-4">
-            <VisualCard visual={slide.visual} />
-            {slide.panels ? renderPanels(slide.panels) : null}
+          <div className="flex items-center justify-center">
+            <VisualCard visual={slide.visual} compact={slide.visual?.compact} />
           </div>
         </div>
       );
