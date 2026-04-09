@@ -32,6 +32,76 @@ function ArrowMarker({ id, color = C.dim }) {
   );
 }
 
+/* ─── Sessions ─────────────────────────────────────────────── */
+
+function SessionsDiagram() {
+  const keys = [
+    { scenario: 'Default main chat', key: 'agent:main:main', color: C.cyan },
+    { scenario: 'Telegram DM (user 456)', key: 'agent:main:telegram:direct:456', color: C.orange },
+    { scenario: 'Slack channel #ops', key: 'agent:main:slack:channel:C012', color: C.teal },
+    { scenario: 'Thread in Slack channel', key: '...slack:channel:C012:thread:123', color: C.purple },
+    { scenario: 'Subagent', key: 'agent:main:subagent:a3f7...', color: C.orange },
+    { scenario: 'Cron job', key: 'agent:main:cron:morning-check', color: C.teal },
+  ];
+
+  const rowH = 28;
+  const tableY = 30;
+  const bridgeY = tableY + keys.length * rowH + 30;
+
+  return (
+    <svg viewBox="0 0 520 380" fill="none" className="w-full h-auto">
+      <defs>
+        <ArrowMarker id="ss" />
+        <ArrowMarker id="ssc" color={C.cyan} />
+        <ArrowMarker id="sso" color={C.orange} />
+        <ArrowMarker id="ssp" color={C.purple} />
+      </defs>
+
+      {/* Session key table */}
+      <text x="10" y="16" fill={C.white} fontSize="10" fontWeight="700" fontFamily={mono}>SESSION KEYS</text>
+      <text x="10" y={tableY - 4} fill={C.faint} fontSize="8" fontFamily={mono} letterSpacing="0.1em">SCENARIO</text>
+      <text x="190" y={tableY - 4} fill={C.faint} fontSize="8" fontFamily={mono} letterSpacing="0.1em">SESSION KEY</text>
+
+      {keys.map((k, i) => {
+        const y = tableY + i * rowH;
+        return (
+          <g key={k.scenario}>
+            <rect x="8" y={y} width="504" height={rowH - 4} rx="4" fill={i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.01)'} stroke={C.faint} strokeWidth="0.5" />
+            <text x="16" y={y + 17} fill={C.dim} fontSize="8.5" fontFamily={sans}>{k.scenario}</text>
+            <text x="196" y={y + 17} fill={k.color} fontSize="8.5" fontWeight="600" fontFamily={mono}>{k.key}</text>
+          </g>
+        );
+      })}
+
+      {/* How sessions talk */}
+      <text x="10" y={bridgeY} fill={C.white} fontSize="10" fontWeight="700" fontFamily={mono}>HOW SESSIONS TALK</text>
+      <text x="10" y={bridgeY + 14} fill={C.dim} fontSize="7.5" fontFamily={sans}>Sessions can't read each other's transcripts. Four bridges:</text>
+
+      {/* Bridge boxes */}
+      <rect x="10" y={bridgeY + 24} width="120" height="52" rx="6" fill={C.cyanBg} stroke={C.cyanBorder} strokeWidth="0.8" />
+      <text x="70" y={bridgeY + 42} textAnchor="middle" fill={C.cyan} fontSize="8" fontWeight="700" fontFamily={mono}>System Events</text>
+      <text x="70" y={bridgeY + 56} textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={sans}>In-memory mailbox</text>
+      <text x="70" y={bridgeY + 68} textAnchor="middle" fill={C.faint} fontSize="6.5" fontFamily={sans}>sticky note on a desk</text>
+
+      <rect x="140" y={bridgeY + 24} width="120" height="52" rx="6" fill={C.orangeBg} stroke={C.orangeBorder} strokeWidth="0.8" />
+      <text x="200" y={bridgeY + 42} textAnchor="middle" fill={C.orange} fontSize="8" fontWeight="700" fontFamily={mono}>Announce</text>
+      <text x="200" y={bridgeY + 56} textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={sans}>Child → parent result</text>
+      <text x="200" y={bridgeY + 68} textAnchor="middle" fill={C.faint} fontSize="6.5" fontFamily={sans}>filing a completion report</text>
+
+      <rect x="270" y={bridgeY + 24} width="120" height="52" rx="6" fill={C.tealBg} stroke={C.tealBorder} strokeWidth="0.8" />
+      <text x="330" y={bridgeY + 42} textAnchor="middle" fill={C.teal} fontSize="8" fontWeight="700" fontFamily={mono}>Message Tool</text>
+      <text x="330" y={bridgeY + 56} textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={sans}>Reply to Slack/TG</text>
+      <text x="330" y={bridgeY + 68} textAnchor="middle" fill={C.faint} fontSize="6.5" fontFamily={sans}>sending the answer out</text>
+
+      <rect x="400" y={bridgeY + 24} width="110" height="52" rx="6" fill={C.purpleBg} stroke={C.purpleBorder} strokeWidth="0.8" />
+      <text x="455" y={bridgeY + 42} textAnchor="middle" fill={C.purple} fontSize="8" fontWeight="700" fontFamily={mono}>Transcript Read</text>
+      <text x="455" y={bridgeY + 56} textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={sans}>Read child's .jsonl</text>
+      <text x="455" y={bridgeY + 68} textAnchor="middle" fill={C.faint} fontSize="6.5" fontFamily={sans}>checking the actual work</text>
+
+    </svg>
+  );
+}
+
 /* ─── Lane System ──────────────────────────────────────────── */
 
 function LanesDiagram() {
@@ -112,13 +182,13 @@ function LanesDiagram() {
       {/* X on cron */}
       <rect x="238" y="218" width="56" height="30" rx="5" fill="rgba(248,113,113,0.08)" stroke="rgba(248,113,113,0.3)" strokeWidth="0.8" />
       <text x="266" y="237" textAnchor="middle" fill={C.red} fontSize="8" fontWeight="700" fontFamily={mono}>CRON</text>
-      <text x="266" y="262" textAnchor="middle" fill={C.red} fontSize="7" fontFamily={mono}>FULL!</text>
+      <text x="266" y="262" textAnchor="middle" fill={C.red} fontSize="7" fontFamily={mono}>same lane</text>
       <line x1="248" y1="222" x2="284" y2="244" stroke={C.red} strokeWidth="1.2" strokeOpacity="0.5" />
       <line x1="284" y1="222" x2="248" y2="244" stroke={C.red} strokeWidth="1.2" strokeOpacity="0.5" />
 
       {/* Redirect arrow */}
       <line x1="294" y1="233" x2="330" y2="233" stroke={C.purple} strokeWidth="1.2" markerEnd="url(#lap)" />
-      <text x="312" y="226" textAnchor="middle" fill={C.purple} fontSize="7" fontWeight="600" fontFamily={mono}>redirect</text>
+      <text x="312" y="226" textAnchor="middle" fill={C.purple} fontSize="7" fontWeight="600" fontFamily={mono}>always remap</text>
 
       <rect x="332" y="218" width="70" height="30" rx="5" fill={C.purpleBg} stroke={C.purple} strokeWidth="1" />
       <text x="367" y="237" textAnchor="middle" fill={C.purple} fontSize="8.5" fontWeight="700" fontFamily={mono}>NESTED</text>
@@ -288,12 +358,12 @@ function PromptAssemblyDiagram() {
       <line x1="328" y1="160" x2="365" y2="160" stroke={C.cyan} strokeWidth="1.5" markerEnd="url(#pac)" />
 
       {/* System Prompt output */}
-      <rect x="368" y="100" width="140" height="120" rx="12" fill="rgba(251,146,60,0.06)" stroke={C.orange} strokeWidth="1.5" />
-      <text x="438" y="138" textAnchor="middle" fill={C.orange} fontSize="11" fontWeight="700" fontFamily={mono}>SYSTEM</text>
-      <text x="438" y="154" textAnchor="middle" fill={C.orange} fontSize="11" fontWeight="700" fontFamily={mono}>PROMPT</text>
+      <rect x="368" y="100" width="140" height="130" rx="12" fill="rgba(251,146,60,0.06)" stroke={C.orange} strokeWidth="1.5" />
+      <text x="438" y="134" textAnchor="middle" fill={C.orange} fontSize="11" fontWeight="700" fontFamily={mono}>SYSTEM</text>
+      <text x="438" y="150" textAnchor="middle" fill={C.orange} fontSize="11" fontWeight="700" fontFamily={mono}>PROMPT</text>
 
       {/* Prompt contents */}
-      <text x="385" y="178" fill={C.dim} fontSize="8" fontFamily={mono}>
+      <text x="385" y="172" fill={C.dim} fontSize="8" fontFamily={mono}>
         <tspan x="385" dy="0">1. Base instructions</tspan>
         <tspan x="385" dy="13">2. Agent identity</tspan>
         <tspan x="385" dy="13">3. Tool definitions</tspan>
@@ -539,6 +609,7 @@ function DevsVsNormiesDiagram() {
 }
 
 export const DIAGRAMS = {
+  sessions: SessionsDiagram,
   lanes: LanesDiagram,
   heartbeat: HeartbeatDiagram,
   'core-docs': CoreDocsDiagram,
