@@ -73,30 +73,37 @@ function SessionsDiagram() {
         );
       })}
 
-      {/* How sessions talk */}
-      <text x="10" y={bridgeY} fill={C.white} fontSize="10" fontWeight="700" fontFamily={mono}>HOW SESSIONS TALK</text>
-      <text x="10" y={bridgeY + 14} fill={C.dim} fontSize="7.5" fontFamily={sans}>Sessions can't read each other's transcripts. Four bridges:</text>
+      {/* How information travels */}
+      <text x="10" y={bridgeY} fill={C.white} fontSize="10" fontWeight="700" fontFamily={mono}>HOW INFORMATION TRAVELS BETWEEN SESSIONS</text>
+      <text x="10" y={bridgeY + 14} fill={C.dim} fontSize="7.5" fontFamily={sans}>Sessions cannot read each other's transcripts directly. Four bridges:</text>
 
-      {/* Bridge boxes */}
-      <rect x="10" y={bridgeY + 24} width="120" height="52" rx="6" fill={C.cyanBg} stroke={C.cyanBorder} strokeWidth="0.8" />
-      <text x="70" y={bridgeY + 42} textAnchor="middle" fill={C.cyan} fontSize="8" fontWeight="700" fontFamily={mono}>System Events</text>
-      <text x="70" y={bridgeY + 56} textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={sans}>In-memory mailbox</text>
-      <text x="70" y={bridgeY + 68} textAnchor="middle" fill={C.faint} fontSize="6.5" fontFamily={sans}>sticky note on a desk</text>
+      {/* Bridge 1: System Events */}
+      <rect x="10" y={bridgeY + 24} width="120" height="62" rx="6" fill={C.cyanBg} stroke={C.cyanBorder} strokeWidth="0.8" />
+      <text x="70" y={bridgeY + 40} textAnchor="middle" fill={C.cyan} fontSize="8" fontWeight="700" fontFamily={mono}>System Events</text>
+      <text x="70" y={bridgeY + 54} textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={sans}>Ephemeral in-memory queue</text>
+      <text x="70" y={bridgeY + 66} textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={sans}>Prepended to next turn</text>
+      <text x="70" y={bridgeY + 78} textAnchor="middle" fill={C.faint} fontSize="6.5" fontFamily={sans}>Not persisted — lost on restart</text>
 
-      <rect x="140" y={bridgeY + 24} width="120" height="52" rx="6" fill={C.orangeBg} stroke={C.orangeBorder} strokeWidth="0.8" />
-      <text x="200" y={bridgeY + 42} textAnchor="middle" fill={C.orange} fontSize="8" fontWeight="700" fontFamily={mono}>Announce</text>
-      <text x="200" y={bridgeY + 56} textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={sans}>Child → parent result</text>
-      <text x="200" y={bridgeY + 68} textAnchor="middle" fill={C.faint} fontSize="6.5" fontFamily={sans}>filing a completion report</text>
+      {/* Bridge 2: sessions_send */}
+      <rect x="140" y={bridgeY + 24} width="120" height="62" rx="6" fill={C.orangeBg} stroke={C.orangeBorder} strokeWidth="0.8" />
+      <text x="200" y={bridgeY + 40} textAnchor="middle" fill={C.orange} fontSize="8" fontWeight="700" fontFamily={mono}>sessions_send</text>
+      <text x="200" y={bridgeY + 54} textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={sans}>Message another session</text>
+      <text x="200" y={bridgeY + 66} textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={sans}>Fire-and-forget or wait</text>
+      <text x="200" y={bridgeY + 78} textAnchor="middle" fill={C.faint} fontSize="6.5" fontFamily={sans}>Ping-pong up to 5 turns</text>
 
-      <rect x="270" y={bridgeY + 24} width="120" height="52" rx="6" fill={C.tealBg} stroke={C.tealBorder} strokeWidth="0.8" />
-      <text x="330" y={bridgeY + 42} textAnchor="middle" fill={C.teal} fontSize="8" fontWeight="700" fontFamily={mono}>Message Tool</text>
-      <text x="330" y={bridgeY + 56} textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={sans}>Reply to Slack/TG</text>
-      <text x="330" y={bridgeY + 68} textAnchor="middle" fill={C.faint} fontSize="6.5" fontFamily={sans}>sending the answer out</text>
+      {/* Bridge 3: sessions_spawn */}
+      <rect x="270" y={bridgeY + 24} width="120" height="62" rx="6" fill={C.tealBg} stroke={C.tealBorder} strokeWidth="0.8" />
+      <text x="330" y={bridgeY + 40} textAnchor="middle" fill={C.teal} fontSize="8" fontWeight="700" fontFamily={mono}>sessions_spawn</text>
+      <text x="330" y={bridgeY + 54} textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={sans}>Isolated child session</text>
+      <text x="330" y={bridgeY + 66} textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={sans}>Always non-blocking</text>
+      <text x="330" y={bridgeY + 78} textAnchor="middle" fill={C.faint} fontSize="6.5" fontFamily={sans}>Results announced to parent</text>
 
-      <rect x="400" y={bridgeY + 24} width="110" height="52" rx="6" fill={C.purpleBg} stroke={C.purpleBorder} strokeWidth="0.8" />
-      <text x="455" y={bridgeY + 42} textAnchor="middle" fill={C.purple} fontSize="8" fontWeight="700" fontFamily={mono}>Transcript Read</text>
-      <text x="455" y={bridgeY + 56} textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={sans}>Read child's .jsonl</text>
-      <text x="455" y={bridgeY + 68} textAnchor="middle" fill={C.faint} fontSize="6.5" fontFamily={sans}>checking the actual work</text>
+      {/* Bridge 4: sessions_history */}
+      <rect x="400" y={bridgeY + 24} width="110" height="62" rx="6" fill={C.purpleBg} stroke={C.purpleBorder} strokeWidth="0.8" />
+      <text x="455" y={bridgeY + 40} textAnchor="middle" fill={C.purple} fontSize="8" fontWeight="700" fontFamily={mono}>sessions_history</text>
+      <text x="455" y={bridgeY + 54} textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={sans}>Read-only transcript</text>
+      <text x="455" y={bridgeY + 66} textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={sans}>Redacted + sanitized</text>
+      <text x="455" y={bridgeY + 78} textAnchor="middle" fill={C.faint} fontSize="6.5" fontFamily={sans}>80KB cap, 4K/block</text>
 
     </svg>
   );
@@ -105,8 +112,15 @@ function SessionsDiagram() {
 /* ─── Lane System ──────────────────────────────────────────── */
 
 function LanesDiagram() {
+  const lanes = [
+    { label: 'MAIN', cap: '4', desc: 'User messages get dedicated capacity', color: C.cyan, bg: C.cyanBg, border: C.cyanBorder },
+    { label: 'SUBAGENT', cap: '8', desc: 'Child work without eating parent slots', color: C.orange, bg: C.orangeBg, border: C.orangeBorder },
+    { label: 'CRON', cap: '1', desc: 'Background jobs can\'t flood user capacity', color: C.teal, bg: C.tealBg, border: C.tealBorder },
+    { label: 'NESTED', cap: '1', desc: 'Prevents deadlock (see below)', color: C.purple, bg: C.purpleBg, border: C.purpleBorder },
+  ];
+
   return (
-    <svg viewBox="0 0 520 340" fill="none" className="w-full h-auto">
+    <svg viewBox="0 0 520 420" fill="none" className="w-full h-auto">
       <defs>
         <ArrowMarker id="la" />
         <ArrowMarker id="lac" color={C.cyan} />
@@ -115,90 +129,105 @@ function LanesDiagram() {
         <ArrowMarker id="lat" color={C.teal} />
       </defs>
 
-      {/* ── Layer 1: Session Lane ── */}
-      <text x="10" y="14" fill={C.faint} fontSize="8" fontFamily={mono} letterSpacing="0.1em">LAYER 1</text>
-      <rect x="10" y="22" width="130" height="68" rx="10" fill={C.cyanBg} stroke={C.cyanBorder} strokeWidth="1.2" />
-      <text x="75" y="46" textAnchor="middle" fill={C.cyan} fontSize="10" fontWeight="700" fontFamily={mono}>SESSION LANE</text>
-      <text x="75" y="62" textAnchor="middle" fill={C.dim} fontSize="8" fontFamily={mono}>session:&lt;key&gt;</text>
-      <text x="75" y="78" textAnchor="middle" fill={C.dim} fontSize="7.5" fontFamily={sans}>1 turn per session</text>
+      {/* ── Two-layer solution ── */}
+      <text x="10" y="14" fill={C.white} fontSize="10" fontWeight="700" fontFamily={mono}>TWO-LAYER QUEUE</text>
 
-      {/* Arrow L1 → L2 */}
-      <line x1="140" y1="56" x2="175" y2="56" stroke={C.cyan} strokeWidth="1.2" markerEnd="url(#lac)" />
-      <text x="157" y="50" textAnchor="middle" fill={C.faint} fontSize="7" fontFamily={mono}>then</text>
+      {/* Inbound */}
+      <text x="10" y="36" fill={C.faint} fontSize="7" fontFamily={mono}>INBOUND</text>
+      <rect x="10" y="42" width="60" height="20" rx="3" fill="rgba(255,255,255,0.03)" stroke={C.faint} strokeWidth="0.6" />
+      <text x="40" y="56" textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={mono}>User A ×2</text>
+      <rect x="10" y="66" width="60" height="20" rx="3" fill="rgba(255,255,255,0.03)" stroke={C.faint} strokeWidth="0.6" />
+      <text x="40" y="80" textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={mono}>User B</text>
+      <rect x="10" y="90" width="60" height="20" rx="3" fill="rgba(255,255,255,0.03)" stroke={C.faint} strokeWidth="0.6" />
+      <text x="40" y="104" textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={mono}>Subagent</text>
+      <rect x="10" y="114" width="60" height="20" rx="3" fill="rgba(255,255,255,0.03)" stroke={C.faint} strokeWidth="0.6" />
+      <text x="40" y="128" textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={mono}>Cron</text>
 
-      {/* ── Layer 2: Global Lanes ── */}
-      <text x="178" y="14" fill={C.faint} fontSize="8" fontFamily={mono} letterSpacing="0.1em">LAYER 2: GLOBAL LANES</text>
-      <rect x="178" y="22" width="332" height="68" rx="10" fill="rgba(255,255,255,0.015)" stroke={C.faint} strokeWidth="1" strokeDasharray="5 3" />
+      {/* Arrows to Layer 1 */}
+      <line x1="70" y1="52" x2="98" y2="52" stroke={C.line} strokeWidth="0.8" markerEnd="url(#la)" />
+      <line x1="70" y1="76" x2="98" y2="76" stroke={C.line} strokeWidth="0.8" markerEnd="url(#la)" />
+      <line x1="70" y1="100" x2="98" y2="100" stroke={C.line} strokeWidth="0.8" markerEnd="url(#la)" />
+      <line x1="70" y1="124" x2="98" y2="124" stroke={C.line} strokeWidth="0.8" markerEnd="url(#la)" />
 
-      {/* Lane boxes inside */}
-      <rect x="190" y="32" width="68" height="48" rx="6" fill={C.cyanBg} stroke={C.cyanBorder} strokeWidth="0.8" />
-      <text x="224" y="52" textAnchor="middle" fill={C.cyan} fontSize="9" fontWeight="700" fontFamily={mono}>MAIN</text>
-      <text x="224" y="66" textAnchor="middle" fill={C.dim} fontSize="7.5" fontFamily={mono}>user msgs</text>
+      {/* Layer 1: Session lanes */}
+      <text x="100" y="36" fill={C.cyan} fontSize="7" fontWeight="600" fontFamily={mono}>LAYER 1: SESSION LANE [cap 1]</text>
+      <rect x="100" y="42" width="120" height="20" rx="3" fill={C.cyanBg} stroke={C.cyanBorder} strokeWidth="0.8" />
+      <text x="160" y="56" textAnchor="middle" fill={C.cyan} fontSize="7" fontWeight="600" fontFamily={mono}>session:alice [1]</text>
+      <rect x="100" y="66" width="120" height="20" rx="3" fill={C.cyanBg} stroke={C.cyanBorder} strokeWidth="0.8" />
+      <text x="160" y="80" textAnchor="middle" fill={C.cyan} fontSize="7" fontWeight="600" fontFamily={mono}>session:bob [1]</text>
+      <rect x="100" y="90" width="120" height="20" rx="3" fill={C.orangeBg} stroke={C.orangeBorder} strokeWidth="0.8" />
+      <text x="160" y="104" textAnchor="middle" fill={C.orange} fontSize="7" fontWeight="600" fontFamily={mono}>session:sub:… [1]</text>
+      <rect x="100" y="114" width="120" height="20" rx="3" fill={C.tealBg} stroke={C.tealBorder} strokeWidth="0.8" />
+      <text x="160" y="128" textAnchor="middle" fill={C.teal} fontSize="7" fontWeight="600" fontFamily={mono}>session:cron:… [1]</text>
 
-      <rect x="268" y="32" width="68" height="48" rx="6" fill={C.orangeBg} stroke={C.orangeBorder} strokeWidth="0.8" />
-      <text x="302" y="52" textAnchor="middle" fill={C.orange} fontSize="9" fontWeight="700" fontFamily={mono}>SUBAGENT</text>
-      <text x="302" y="66" textAnchor="middle" fill={C.dim} fontSize="7.5" fontFamily={mono}>child work</text>
+      {/* Arrows to Layer 2 */}
+      <line x1="220" y1="52" x2="268" y2="64" stroke={C.line} strokeWidth="0.8" markerEnd="url(#la)" />
+      <line x1="220" y1="76" x2="268" y2="70" stroke={C.line} strokeWidth="0.8" markerEnd="url(#la)" />
+      <line x1="220" y1="100" x2="268" y2="100" stroke={C.line} strokeWidth="0.8" markerEnd="url(#la)" />
+      <line x1="220" y1="124" x2="268" y2="124" stroke={C.line} strokeWidth="0.8" markerEnd="url(#la)" />
 
-      <rect x="346" y="32" width="68" height="48" rx="6" fill={C.tealBg} stroke={C.tealBorder} strokeWidth="0.8" />
-      <text x="380" y="52" textAnchor="middle" fill={C.teal} fontSize="9" fontWeight="700" fontFamily={mono}>CRON</text>
-      <text x="380" y="66" textAnchor="middle" fill={C.dim} fontSize="7.5" fontFamily={mono}>scheduled</text>
+      {/* Layer 2: Global lanes */}
+      <text x="270" y="36" fill={C.faint} fontSize="7" fontWeight="600" fontFamily={mono}>LAYER 2: GLOBAL LANES</text>
+      <rect x="270" y="42" width="100" height="40" rx="5" fill={C.cyanBg} stroke={C.cyanBorder} strokeWidth="0.8" />
+      <text x="320" y="60" textAnchor="middle" fill={C.cyan} fontSize="9" fontWeight="700" fontFamily={mono}>MAIN [4]</text>
+      <text x="320" y="74" textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={sans}>user messages</text>
 
-      <rect x="424" y="32" width="68" height="48" rx="6" fill={C.purpleBg} stroke={C.purpleBorder} strokeWidth="0.8" />
-      <text x="458" y="52" textAnchor="middle" fill={C.purple} fontSize="9" fontWeight="700" fontFamily={mono}>NESTED</text>
-      <text x="458" y="66" textAnchor="middle" fill={C.dim} fontSize="7.5" fontFamily={mono}>deadlock fix</text>
+      <rect x="270" y="88" width="100" height="26" rx="5" fill={C.orangeBg} stroke={C.orangeBorder} strokeWidth="0.8" />
+      <text x="320" y="106" textAnchor="middle" fill={C.orange} fontSize="9" fontWeight="700" fontFamily={mono}>SUBAGENT [8]</text>
 
-      {/* ── WHY: Separation ── */}
-      <text x="10" y="114" fill={C.white} fontSize="9" fontWeight="700" fontFamily={mono}>WHY SEPARATE LANES?</text>
+      <rect x="270" y="118" width="100" height="26" rx="5" fill={C.tealBg} stroke={C.tealBorder} strokeWidth="0.8" />
+      <text x="320" y="136" textAnchor="middle" fill={C.teal} fontSize="9" fontWeight="700" fontFamily={mono}>CRON [1]</text>
 
-      {/* Main spawns subagent */}
-      <rect x="10" y="126" width="240" height="44" rx="8" fill="rgba(255,255,255,0.02)" stroke={C.faint} strokeWidth="0.8" />
-      <text x="22" y="144" fill={C.cyan} fontSize="8.5" fontWeight="700" fontFamily={mono}>MAIN → SUBAGENT</text>
-      <text x="22" y="160" fill={C.dim} fontSize="8" fontFamily={sans}>Spawning children doesn't eat parent slots</text>
+      {/* Arrow to run */}
+      <line x1="370" y1="80" x2="400" y2="80" stroke={C.cyan} strokeWidth="1.2" markerEnd="url(#lac)" />
+      <rect x="402" y="62" width="100" height="40" rx="8" fill="rgba(74,222,128,0.06)" stroke="rgba(74,222,128,0.3)" strokeWidth="1" />
+      <text x="452" y="86" textAnchor="middle" fill={C.green} fontSize="10" fontWeight="700" fontFamily={mono}>LLM RUN</text>
 
-      {/* Cron doesn't starve main */}
-      <rect x="260" y="126" width="250" height="44" rx="8" fill="rgba(255,255,255,0.02)" stroke={C.faint} strokeWidth="0.8" />
-      <text x="272" y="144" fill={C.teal} fontSize="8.5" fontWeight="700" fontFamily={mono}>CRON ≠ MAIN</text>
-      <text x="272" y="160" fill={C.dim} fontSize="8" fontFamily={sans}>Background jobs never starve user requests</text>
+      {/* ── Lane table ── */}
+      <text x="10" y="168" fill={C.white} fontSize="9" fontWeight="700" fontFamily={mono}>FOUR GLOBAL LANES</text>
 
-      {/* ── WHY: Deadlock prevention ── */}
-      <text x="10" y="196" fill={C.white} fontSize="9" fontWeight="700" fontFamily={mono}>DEADLOCK PREVENTION</text>
+      {lanes.map((l, i) => {
+        const y = 180 + i * 30;
+        return (
+          <g key={l.label}>
+            <rect x="10" y={y} width="500" height="26" rx="4" fill={i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.01)'} stroke={C.faint} strokeWidth="0.5" />
+            <text x="22" y={y + 17} fill={l.color} fontSize="9" fontWeight="700" fontFamily={mono}>{l.label}</text>
+            <text x="110" y={y + 17} fill={C.dim} fontSize="9" fontWeight="600" fontFamily={mono}>cap {l.cap}</text>
+            <text x="160" y={y + 17} fill={C.dim} fontSize="8" fontFamily={sans}>{l.desc}</text>
+          </g>
+        );
+      })}
 
-      <rect x="10" y="208" width="500" height="70" rx="10" fill={C.purpleBg} stroke={C.purpleBorder} strokeWidth="1" />
+      {/* ── Deadlock prevention ── */}
+      <text x="10" y="316" fill={C.white} fontSize="9" fontWeight="700" fontFamily={mono}>DEADLOCK PREVENTION</text>
 
-      {/* Deadlock scenario */}
-      <rect x="24" y="218" width="72" height="30" rx="5" fill={C.tealBg} stroke={C.tealBorder} strokeWidth="0.8" />
-      <text x="60" y="237" textAnchor="middle" fill={C.teal} fontSize="8.5" fontWeight="700" fontFamily={mono}>CRON JOB</text>
-      <text x="60" y="262" textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={mono}>holds slot</text>
+      <rect x="10" y="328" width="500" height="70" rx="10" fill={C.purpleBg} stroke={C.purpleBorder} strokeWidth="1" />
 
-      <line x1="96" y1="233" x2="124" y2="233" stroke={C.line} strokeWidth="1" markerEnd="url(#la)" />
-      <text x="110" y="226" textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={mono}>runs</text>
+      <rect x="24" y="338" width="72" height="30" rx="5" fill={C.tealBg} stroke={C.tealBorder} strokeWidth="0.8" />
+      <text x="60" y="357" textAnchor="middle" fill={C.teal} fontSize="8.5" fontWeight="700" fontFamily={mono}>CRON JOB</text>
+      <text x="60" y="382" textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={mono}>holds slot</text>
 
-      <rect x="126" y="218" width="82" height="30" rx="5" fill="rgba(255,255,255,0.04)" stroke={C.faint} strokeWidth="0.8" />
-      <text x="167" y="237" textAnchor="middle" fill={C.white} fontSize="8" fontWeight="600" fontFamily={mono}>inner agent</text>
+      <line x1="96" y1="353" x2="124" y2="353" stroke={C.line} strokeWidth="1" markerEnd="url(#la)" />
+      <text x="110" y="346" textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={mono}>runs</text>
 
-      <line x1="208" y1="233" x2="236" y2="233" stroke={C.line} strokeWidth="1" markerEnd="url(#la)" />
-      <text x="222" y="226" textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={mono}>needs</text>
+      <rect x="126" y="338" width="82" height="30" rx="5" fill="rgba(255,255,255,0.04)" stroke={C.faint} strokeWidth="0.8" />
+      <text x="167" y="357" textAnchor="middle" fill={C.white} fontSize="8" fontWeight="600" fontFamily={mono}>inner agent</text>
 
-      {/* X on cron */}
-      <rect x="238" y="218" width="56" height="30" rx="5" fill="rgba(248,113,113,0.08)" stroke="rgba(248,113,113,0.3)" strokeWidth="0.8" />
-      <text x="266" y="237" textAnchor="middle" fill={C.red} fontSize="8" fontWeight="700" fontFamily={mono}>CRON</text>
-      <text x="266" y="262" textAnchor="middle" fill={C.red} fontSize="7" fontFamily={mono}>same lane</text>
-      <line x1="248" y1="222" x2="284" y2="244" stroke={C.red} strokeWidth="1.2" strokeOpacity="0.5" />
-      <line x1="284" y1="222" x2="248" y2="244" stroke={C.red} strokeWidth="1.2" strokeOpacity="0.5" />
+      <line x1="208" y1="353" x2="236" y2="353" stroke={C.line} strokeWidth="1" markerEnd="url(#la)" />
+      <text x="222" y="346" textAnchor="middle" fill={C.dim} fontSize="7" fontFamily={mono}>needs</text>
 
-      {/* Redirect arrow */}
-      <line x1="294" y1="233" x2="330" y2="233" stroke={C.purple} strokeWidth="1.2" markerEnd="url(#lap)" />
-      <text x="312" y="226" textAnchor="middle" fill={C.purple} fontSize="7" fontWeight="600" fontFamily={mono}>always remap</text>
+      <rect x="238" y="338" width="56" height="30" rx="5" fill="rgba(248,113,113,0.08)" stroke="rgba(248,113,113,0.3)" strokeWidth="0.8" />
+      <text x="266" y="357" textAnchor="middle" fill={C.red} fontSize="8" fontWeight="700" fontFamily={mono}>CRON</text>
+      <text x="266" y="382" textAnchor="middle" fill={C.red} fontSize="7" fontFamily={mono}>same lane</text>
+      <line x1="248" y1="342" x2="284" y2="364" stroke={C.red} strokeWidth="1.2" strokeOpacity="0.5" />
+      <line x1="284" y1="342" x2="248" y2="364" stroke={C.red} strokeWidth="1.2" strokeOpacity="0.5" />
 
-      <rect x="332" y="218" width="70" height="30" rx="5" fill={C.purpleBg} stroke={C.purple} strokeWidth="1" />
-      <text x="367" y="237" textAnchor="middle" fill={C.purple} fontSize="8.5" fontWeight="700" fontFamily={mono}>NESTED</text>
-      <text x="367" y="262" textAnchor="middle" fill={C.green} fontSize="7" fontWeight="600" fontFamily={mono}>safe!</text>
+      <line x1="294" y1="353" x2="330" y2="353" stroke={C.purple} strokeWidth="1.2" markerEnd="url(#lap)" />
+      <text x="312" y="346" textAnchor="middle" fill={C.purple} fontSize="7" fontWeight="600" fontFamily={mono}>always remap</text>
 
-      {/* ── Session store bridge ── */}
-      <rect x="10" y="296" width="500" height="34" rx="8" fill="rgba(255,255,255,0.02)" stroke={C.faint} strokeWidth="0.8" strokeDasharray="4 3" />
-      <text x="260" y="316" textAnchor="middle" fill={C.dim} fontSize="8.5" fontFamily={mono}>
-        Lanes don't share data — results flow through session store, not transcripts
-      </text>
+      <rect x="332" y="338" width="70" height="30" rx="5" fill={C.purpleBg} stroke={C.purple} strokeWidth="1" />
+      <text x="367" y="357" textAnchor="middle" fill={C.purple} fontSize="8.5" fontWeight="700" fontFamily={mono}>NESTED</text>
+      <text x="367" y="382" textAnchor="middle" fill={C.green} fontSize="7" fontWeight="600" fontFamily={mono}>safe!</text>
     </svg>
   );
 }
@@ -542,18 +571,16 @@ function DevsVsNormiesDiagram() {
   // Time labels
   const timePoints = [
     { x: left, label: 'Launch' },
-    { x: left + (right - left) * 0.3, label: 'Early adopters' },
-    { x: left + (right - left) * 0.6, label: 'Mainstream' },
-    { x: right, label: 'Now' },
+    { x: right, label: 'Early adopters' },
   ];
 
   const amp = 90; // max amplitude from midY
 
-  // Normies (cyan) — starts neutral, rises to love
-  const normiesPath = `M${left},${midY} C${left + 70},${midY - 8} ${left + 140},${midY - 50} ${left + 200},${midY - 65} C${left + 260},${midY - 78} ${left + 310},${midY - 85} ${right},${midY - amp}`;
+  // Non-devs (cyan) — starts neutral, rises to love
+  const normiesPath = `M${left},${midY} C${left + 120},${midY - 15} ${left + 240},${midY - 60} ${right},${midY - amp}`;
 
   // Developers (red) — starts slightly positive, drops to disdain
-  const devsPath = `M${left},${midY - 15} C${left + 50},${midY - 5} ${left + 120},${midY + 35} ${left + 200},${midY + 55} C${left + 270},${midY + 75} ${left + 320},${midY + 84} ${right},${midY + amp}`;
+  const devsPath = `M${left},${midY - 15} C${left + 100},${midY + 10} ${left + 220},${midY + 60} ${right},${midY + amp}`;
 
   return (
     <svg viewBox="0 0 520 300" fill="none" className="w-full h-auto">
@@ -595,10 +622,10 @@ function DevsVsNormiesDiagram() {
       {/* Neutral label */}
       <text x={left - 6} y={midY + 3} textAnchor="end" fill={C.dim} fontSize="7.5" fontFamily={mono}>0</text>
 
-      {/* Normies line (cyan) */}
+      {/* Non-devs line (cyan) */}
       <path d={normiesPath} stroke="url(#normies-grad)" strokeWidth="2.5" strokeLinecap="round" fill="none" />
       <circle cx={right} cy={midY - amp} r="4" fill={C.cyan} />
-      <text x={right + 10} y={midY - amp + 4} fill={C.cyan} fontSize="10" fontWeight="700" fontFamily={mono}>Normies</text>
+      <text x={right + 10} y={midY - amp + 4} fill={C.cyan} fontSize="10" fontWeight="700" fontFamily={mono}>Non-devs</text>
 
       {/* Developers line (red) */}
       <path d={devsPath} stroke="url(#devs-grad)" strokeWidth="2.5" strokeLinecap="round" fill="none" />
