@@ -327,7 +327,7 @@ function CoreDocsDiagram() {
       <rect x="380" y="110" width="110" height="100" rx="12" fill={C.cyanBg} stroke={C.cyan} strokeWidth="1.5" />
       <text x="435" y="148" textAnchor="middle" fill={C.cyan} fontSize="11" fontWeight="700" fontFamily={mono}>AGENT</text>
       <text x="435" y="164" textAnchor="middle" fill={C.cyan} fontSize="11" fontWeight="700" fontFamily={mono}>RUNTIME</text>
-      <text x="435" y="184" textAnchor="middle" fill={C.dim} fontSize="8" fontFamily={mono}>Pi Agent Core</text>
+      <text x="435" y="184" textAnchor="middle" fill={C.dim} fontSize="8" fontFamily={mono}>OpenClaw Runtime</text>
 
       {/* Skills folder */}
       <rect x="380" y="230" width="110" height="36" rx="6" fill={C.purpleBg} stroke={C.purpleBorder} strokeWidth="1" />
@@ -340,73 +340,74 @@ function CoreDocsDiagram() {
 /* ─── Prompt Assembly Pipeline ─────────────────────────────── */
 
 function PromptAssemblyDiagram() {
-  const files = [
-    { label: 'SOUL.md', color: C.cyan, y: 14 },
-    { label: 'AGENTS.md', color: C.orange, y: 52 },
-    { label: 'IDENTITY.md', color: C.teal, y: 90 },
-    { label: 'TOOLS.md', color: C.purple, y: 128 },
-    { label: 'MEMORY.md', color: C.cyan, y: 166 },
-    { label: 'HEARTBEAT.md', color: C.orange, y: 204 },
-  ];
-
+  const cx = 260; // center x
   return (
-    <svg viewBox="0 0 520 340" fill="none" className="w-full h-auto">
+    <svg viewBox="0 0 520 320" fill="none" className="w-full h-auto">
       <defs>
         <ArrowMarker id="pa" />
         <ArrowMarker id="pac" color={C.cyan} />
       </defs>
 
-      {/* Bootstrap files column */}
-      <text x="10" y="8" fill={C.faint} fontSize="8" fontFamily={mono} textTransform="uppercase" letterSpacing="0.1em">BOOTSTRAP FILES</text>
-      {files.map((f) => (
-        <g key={f.label}>
-          <rect x="10" y={f.y} width="120" height="30" rx="5" fill="rgba(255,255,255,0.03)" stroke={f.color} strokeWidth="1" strokeOpacity="0.4" />
-          <text x="70" y={f.y + 19} textAnchor="middle" fill={f.color} fontSize="9.5" fontWeight="700" fontFamily={mono}>{f.label}</text>
-          <line x1="130" y1={f.y + 15} x2="195" y2={148} stroke={C.line} strokeWidth="0.8" markerEnd="url(#pa)" />
-        </g>
-      ))}
+      {/* Section: Each API call */}
+      <text x={cx} y="20" textAnchor="middle" fill={C.white} fontSize="13" fontWeight="700" fontFamily={mono}>EACH API CALL</text>
 
-      {/* Skills input */}
-      <rect x="10" y="248" width="120" height="30" rx="5" fill={C.purpleBg} stroke={C.purpleBorder} strokeWidth="1" />
-      <text x="70" y="267" textAnchor="middle" fill={C.purple} fontSize="9.5" fontWeight="700" fontFamily={mono}>SKILL.md files</text>
-      <line x1="130" y1="263" x2="195" y2="180" stroke={C.line} strokeWidth="0.8" markerEnd="url(#pa)" />
+      {[
+        { label: 'Turn 1', hist: 20 },
+        { label: 'Turn 2', hist: 55 },
+        { label: 'Turn 3', hist: 100 },
+      ].map((t, i) => {
+        const y = 38 + i * 50;
+        const barH = 36;
+        const cW = 200;
+        const vW = 30;
+        const hW = t.hist;
+        const barStart = 70;
+        return (
+          <g key={t.label}>
+            <text x="14" y={y + 23} fill={C.dim} fontSize="12" fontWeight="600" fontFamily={mono}>{t.label}</text>
+            {/* Cached prefix */}
+            <rect x={barStart} y={y} width={cW} height={barH} rx="6" fill={C.cyanBg} stroke={C.cyanBorder} strokeWidth="1.2" />
+            <text x={barStart + cW / 2} y={y + 22} textAnchor="middle" fill={C.green} fontSize="11" fontWeight="700" fontFamily={mono}>
+              {i === 0 ? 'STABLE PREFIX → CACHED' : 'CACHE HIT (free)'}
+            </text>
+            {/* Volatile */}
+            <rect x={barStart + cW + 3} y={y} width={vW} height={barH} rx="6" fill={C.orangeBg} stroke={C.orangeBorder} strokeWidth="1.2" />
+            {/* Transcript grows */}
+            <rect x={barStart + cW + vW + 6} y={y} width={hW} height={barH} rx="6" fill="rgba(255,255,255,0.05)" stroke={C.faint} strokeWidth="1.2" />
+            {i === 0 && <>
+              <text x={barStart + cW + 3 + vW + 3 + hW / 2} y={y - 7} textAnchor="middle" fill={C.dim} fontSize="9" fontFamily={mono}>
+                <tspan fill={C.orange}>volatile context</tspan>{' + transcript'}
+              </text>
+            </>}
+            {i === 2 && <text x={barStart + cW + vW + 6 + hW + 8} y={y + 23} fill={C.orange} fontSize="11" fontWeight="600" fontFamily={mono}>{'← grows'}</text>}
+          </g>
+        );
+      })}
 
-      {/* Session History input */}
-      <rect x="10" y="290" width="120" height="30" rx="5" fill="rgba(255,255,255,0.03)" stroke={C.faint} strokeWidth="1" />
-      <text x="70" y="309" textAnchor="middle" fill={C.dim} fontSize="9.5" fontWeight="700" fontFamily={mono}>Session History</text>
-      <line x1="130" y1="305" x2="195" y2="195" stroke={C.line} strokeWidth="0.8" markerEnd="url(#pa)" />
+      {/* Divider */}
+      <line x1="40" y1="196" x2="480" y2="196" stroke={C.faint} strokeWidth="0.5" strokeDasharray="4 4" />
 
-      {/* Context Assembler */}
-      <rect x="198" y="110" width="130" height="100" rx="12" fill={C.cyanBg} stroke={C.cyan} strokeWidth="1.5" />
-      <text x="263" y="148" textAnchor="middle" fill={C.cyan} fontSize="11" fontWeight="700" fontFamily={mono}>CONTEXT</text>
-      <text x="263" y="164" textAnchor="middle" fill={C.cyan} fontSize="11" fontWeight="700" fontFamily={mono}>ASSEMBLER</text>
-      <text x="263" y="184" textAnchor="middle" fill={C.dim} fontSize="8" fontFamily={mono}>resolveBootstrap</text>
-      <text x="263" y="196" textAnchor="middle" fill={C.dim} fontSize="8" fontFamily={mono}>ContextForRun</text>
+      {/* Section: Compaction */}
+      <text x={cx} y="218" textAnchor="middle" fill={C.white} fontSize="13" fontWeight="700" fontFamily={mono}>WHEN CONTEXT FILLS UP</text>
 
-      {/* Arrow to system prompt */}
-      <line x1="328" y1="160" x2="365" y2="160" stroke={C.cyan} strokeWidth="1.5" markerEnd="url(#pac)" />
+      <rect x="46" y="232" width="130" height="44" rx="8" fill="rgba(255,255,255,0.03)" stroke={C.cyanBorder} strokeWidth="1" />
+      <text x="111" y="250" textAnchor="middle" fill={C.cyan} fontSize="10" fontWeight="700" fontFamily={mono}>PREEMPTIVE</text>
+      <text x="111" y="266" textAnchor="middle" fill={C.dim} fontSize="9" fontFamily={sans}>before send</text>
 
-      {/* System Prompt output */}
-      <rect x="368" y="100" width="140" height="130" rx="12" fill="rgba(251,146,60,0.06)" stroke={C.orange} strokeWidth="1.5" />
-      <text x="438" y="134" textAnchor="middle" fill={C.orange} fontSize="11" fontWeight="700" fontFamily={mono}>SYSTEM</text>
-      <text x="438" y="150" textAnchor="middle" fill={C.orange} fontSize="11" fontWeight="700" fontFamily={mono}>PROMPT</text>
+      <rect x="186" y="232" width="130" height="44" rx="8" fill="rgba(255,255,255,0.03)" stroke={C.orangeBorder} strokeWidth="1" />
+      <text x="251" y="250" textAnchor="middle" fill={C.orange} fontSize="10" fontWeight="700" fontFamily={mono}>POST-TURN</text>
+      <text x="251" y="266" textAnchor="middle" fill={C.dim} fontSize="9" fontFamily={sans}>after success</text>
 
-      {/* Prompt contents */}
-      <text x="385" y="172" fill={C.dim} fontSize="8" fontFamily={mono}>
-        <tspan x="385" dy="0">1. Base instructions</tspan>
-        <tspan x="385" dy="13">2. Agent identity</tspan>
-        <tspan x="385" dy="13">3. Tool definitions</tspan>
-        <tspan x="385" dy="13">4. Conversation</tspan>
-      </text>
+      <rect x="326" y="232" width="130" height="44" rx="8" fill="rgba(255,255,255,0.03)" stroke="rgba(248,113,113,0.35)" strokeWidth="1" />
+      <text x="391" y="250" textAnchor="middle" fill={C.red} fontSize="10" fontWeight="700" fontFamily={mono}>OVERFLOW</text>
+      <text x="391" y="266" textAnchor="middle" fill={C.dim} fontSize="9" fontFamily={sans}>after API error</text>
 
-      {/* Token budget label */}
-      <rect x="198" y="230" width="310" height="40" rx="6" fill="rgba(248,113,113,0.06)" stroke="rgba(248,113,113,0.25)" strokeWidth="0.8" />
-      <text x="353" y="244" textAnchor="middle" fill={C.red} fontSize="8" fontWeight="600" fontFamily={mono}>
-        20K/file · 150K total bootstrap
-      </text>
-      <text x="353" y="258" textAnchor="middle" fill={C.red} fontSize="8" fontFamily={mono} fontStyle="italic">
-        Auto-compaction on overflow
-      </text>
+      {/* Arrow down to compaction */}
+      <line x1={cx} y1="276" x2={cx} y2="290" stroke={C.line} strokeWidth="1.2" markerEnd="url(#pa)" />
+
+      <rect x="100" y="294" width="320" height="22" rx="6" fill={C.purpleBg} stroke={C.purpleBorder} strokeWidth="1.2" />
+      <text x={cx} y="309" textAnchor="middle" fill={C.purple} fontSize="10" fontWeight="700" fontFamily={mono}>COMPACTION — recent verbatim, older summarized</text>
+
     </svg>
   );
 }
@@ -484,7 +485,7 @@ function CronDiagram() {
 
 function TaskLifecycleDiagram() {
   return (
-    <svg viewBox="0 0 520 380" fill="none" className="w-full h-auto">
+    <svg viewBox="0 0 520 340" fill="none" className="w-full h-auto">
       <defs>
         <ArrowMarker id="tl" />
         <ArrowMarker id="tlc" color={C.cyan} />
@@ -492,71 +493,91 @@ function TaskLifecycleDiagram() {
         <ArrowMarker id="tlr" color={C.red} />
       </defs>
 
-      {/* Task sources */}
-      <text x="10" y="16" fill={C.faint} fontSize="8" fontFamily={mono} letterSpacing="0.1em">SOURCES</text>
+      {/* Creates vs doesn't */}
+      <text x="10" y="14" fill={C.white} fontSize="9" fontWeight="700" fontFamily={mono}>CREATES A TASK</text>
       {[
-        { label: 'ACP runs', y: 28, color: C.cyan },
-        { label: 'Subagents', y: 54, color: C.orange },
-        { label: 'Cron jobs', y: 80, color: C.teal },
-        { label: 'CLI ops', y: 106, color: C.purple },
-      ].map((s) => (
+        { label: 'ACP (API calls)', color: C.cyan },
+        { label: 'Subagents', color: C.orange },
+        { label: 'Cron jobs', color: C.teal },
+        { label: 'CLI ops', color: C.purple },
+      ].map((s, i) => (
         <g key={s.label}>
-          <rect x="10" y={s.y} width="90" height="22" rx="4" fill="rgba(255,255,255,0.03)" stroke={s.color} strokeWidth="0.8" strokeOpacity="0.5" />
-          <text x="55" y={s.y + 15} textAnchor="middle" fill={s.color} fontSize="9" fontWeight="600" fontFamily={mono}>{s.label}</text>
-          <line x1="100" y1={s.y + 11} x2="148" y2={78} stroke={C.line} strokeWidth="0.8" markerEnd="url(#tl)" />
+          <rect x="10" y={24 + i * 22} width="90" height="18" rx="3" fill="rgba(255,255,255,0.03)" stroke={s.color} strokeWidth="0.8" strokeOpacity="0.5" />
+          <text x="55" y={37 + i * 22} textAnchor="middle" fill={s.color} fontSize="8" fontWeight="600" fontFamily={mono}>{s.label}</text>
         </g>
       ))}
 
-      {/* QUEUED */}
-      <rect x="150" y="56" width="90" height="44" rx="8" fill={C.purpleBg} stroke={C.purpleBorder} strokeWidth="1.2" />
-      <text x="195" y="82" textAnchor="middle" fill={C.purple} fontSize="11" fontWeight="700" fontFamily={mono}>QUEUED</text>
+      <text x="130" y="14" fill={C.faint} fontSize="9" fontWeight="700" fontFamily={mono}>DOES NOT</text>
+      {[
+        { label: 'Chat turns', color: C.dim },
+        { label: 'Heartbeats', color: C.dim },
+        { label: '/commands', color: C.dim },
+      ].map((s, i) => (
+        <g key={s.label}>
+          <rect x="130" y={24 + i * 22} width="90" height="18" rx="3" fill="rgba(255,255,255,0.01)" stroke={C.faint} strokeWidth="0.5" />
+          <text x="175" y={37 + i * 22} textAnchor="middle" fill={C.dim} fontSize="8" fontFamily={mono}>{s.label}</text>
+        </g>
+      ))}
 
-      <line x1="240" y1="78" x2="278" y2="78" stroke={C.line} strokeWidth="1.2" markerEnd="url(#tl)" />
+      {/* Lifecycle */}
+      <text x="260" y="14" fill={C.white} fontSize="9" fontWeight="700" fontFamily={mono}>LIFECYCLE</text>
+
+      {/* QUEUED */}
+      <rect x="260" y="24" width="70" height="30" rx="6" fill={C.purpleBg} stroke={C.purpleBorder} strokeWidth="1" />
+      <text x="295" y="43" textAnchor="middle" fill={C.purple} fontSize="9" fontWeight="700" fontFamily={mono}>QUEUED</text>
+
+      <line x1="330" y1="39" x2="358" y2="39" stroke={C.line} strokeWidth="1" markerEnd="url(#tl)" />
 
       {/* RUNNING */}
-      <rect x="280" y="56" width="90" height="44" rx="8" fill={C.cyanBg} stroke={C.cyan} strokeWidth="1.5" />
-      <text x="325" y="82" textAnchor="middle" fill={C.cyan} fontSize="11" fontWeight="700" fontFamily={mono}>RUNNING</text>
+      <rect x="360" y="24" width="74" height="30" rx="6" fill={C.cyanBg} stroke={C.cyan} strokeWidth="1.2" />
+      <text x="397" y="43" textAnchor="middle" fill={C.cyan} fontSize="9" fontWeight="700" fontFamily={mono}>RUNNING</text>
 
-      {/* SUCCEEDED */}
-      <line x1="370" y1="66" x2="408" y2="38" stroke="rgba(74,222,128,0.3)" strokeWidth="1.2" markerEnd="url(#tlg)" />
-      <rect x="410" y="16" width="100" height="40" rx="8" fill={C.greenBg} stroke="rgba(74,222,128,0.35)" strokeWidth="1.2" />
-      <text x="460" y="40" textAnchor="middle" fill={C.green} fontSize="10" fontWeight="700" fontFamily={mono}>SUCCEEDED</text>
+      {/* Terminal states */}
+      <line x1="434" y1="30" x2="458" y2="22" stroke="rgba(74,222,128,0.3)" strokeWidth="1" markerEnd="url(#tlg)" />
+      <rect x="460" y="8" width="52" height="22" rx="4" fill={C.greenBg} stroke="rgba(74,222,128,0.35)" strokeWidth="0.8" />
+      <text x="486" y="23" textAnchor="middle" fill={C.green} fontSize="7" fontWeight="700" fontFamily={mono}>OK</text>
 
-      {/* FAILED */}
-      <line x1="370" y1="78" x2="408" y2="78" stroke="rgba(248,113,113,0.3)" strokeWidth="1.2" markerEnd="url(#tlr)" />
-      <rect x="410" y="58" width="100" height="40" rx="8" fill="rgba(248,113,113,0.06)" stroke="rgba(248,113,113,0.35)" strokeWidth="1.2" />
-      <text x="460" y="82" textAnchor="middle" fill={C.red} fontSize="10" fontWeight="700" fontFamily={mono}>FAILED</text>
+      <line x1="434" y1="39" x2="458" y2="39" stroke="rgba(248,113,113,0.3)" strokeWidth="1" markerEnd="url(#tlr)" />
+      <rect x="460" y="28" width="52" height="22" rx="4" fill="rgba(248,113,113,0.06)" stroke="rgba(248,113,113,0.35)" strokeWidth="0.8" />
+      <text x="486" y="43" textAnchor="middle" fill={C.red} fontSize="7" fontWeight="700" fontFamily={mono}>FAILED</text>
 
-      {/* TIMED_OUT */}
-      <line x1="370" y1="90" x2="408" y2="118" stroke="rgba(251,191,36,0.3)" strokeWidth="1.2" markerEnd="url(#tl)" />
-      <rect x="410" y="100" width="100" height="40" rx="8" fill="rgba(251,191,36,0.06)" stroke="rgba(251,191,36,0.35)" strokeWidth="1.2" />
-      <text x="460" y="124" textAnchor="middle" fill={C.yellow} fontSize="10" fontWeight="700" fontFamily={mono}>TIMED_OUT</text>
+      <line x1="434" y1="48" x2="458" y2="56" stroke="rgba(251,191,36,0.3)" strokeWidth="1" markerEnd="url(#tl)" />
+      <rect x="460" y="48" width="52" height="22" rx="4" fill="rgba(251,191,36,0.06)" stroke="rgba(251,191,36,0.35)" strokeWidth="0.8" />
+      <text x="486" y="63" textAnchor="middle" fill={C.yellow} fontSize="7" fontWeight="700" fontFamily={mono}>TIMEOUT</text>
 
-      {/* CANCELLED */}
-      <line x1="370" y1="96" x2="408" y2="158" stroke="rgba(167,139,250,0.3)" strokeWidth="1.2" markerEnd="url(#tl)" />
-      <rect x="410" y="142" width="100" height="40" rx="8" fill={C.purpleBg} stroke={C.purpleBorder} strokeWidth="1.2" />
-      <text x="460" y="166" textAnchor="middle" fill={C.purple} fontSize="10" fontWeight="700" fontFamily={mono}>CANCELLED</text>
+      {/* LOST - special */}
+      <line x1="397" y1="54" x2="397" y2="72" stroke="rgba(255,255,255,0.15)" strokeWidth="1" markerEnd="url(#tl)" />
+      <rect x="368" y="74" width="58" height="22" rx="4" fill="rgba(255,255,255,0.03)" stroke={C.faint} strokeWidth="0.8" />
+      <text x="397" y="89" textAnchor="middle" fill={C.dim} fontSize="7" fontWeight="700" fontFamily={mono}>LOST</text>
+      <text x="434" y="89" fill={C.faint} fontSize="6.5" fontFamily={sans}>backing gone &gt; 5m</text>
 
-      {/* LOST */}
-      <line x1="370" y1="100" x2="408" y2="200" stroke="rgba(255,255,255,0.15)" strokeWidth="1.2" markerEnd="url(#tl)" />
-      <rect x="410" y="190" width="100" height="40" rx="8" fill="rgba(255,255,255,0.03)" stroke={C.faint} strokeWidth="1.2" />
-      <text x="460" y="214" textAnchor="middle" fill={C.dim} fontSize="10" fontWeight="700" fontFamily={mono}>LOST</text>
+      {/* Lost detection section */}
+      <text x="10" y="130" fill={C.white} fontSize="9" fontWeight="700" fontFamily={mono}>LOST DETECTION (every 60s)</text>
 
-      {/* Storage & reconciliation */}
-      <rect x="10" y="252" width="500" height="42" rx="8" fill="rgba(255,255,255,0.02)" stroke={C.faint} strokeWidth="0.8" strokeDasharray="4 3" />
-      <text x="260" y="270" textAnchor="middle" fill={C.dim} fontSize="8.5" fontFamily={mono}>SQLite · 7-day retention · Auto-reconciliation</text>
-      <text x="260" y="284" textAnchor="middle" fill={C.faint} fontSize="8" fontFamily={mono} fontStyle="italic">Managed or mirrored orchestration</text>
+      <rect x="10" y="142" width="500" height="56" rx="8" fill="rgba(248,113,113,0.04)" stroke="rgba(248,113,113,0.2)" strokeWidth="0.8" />
+      <text x="24" y="160" fill={C.dim} fontSize="8" fontFamily={mono}>For each active task: is the backing runtime still alive?</text>
+      <text x="24" y="178" fill={C.dim} fontSize="8" fontFamily={mono}>
+        <tspan fill={C.cyan}>ACP</tspan> → session entry?{'   '}
+        <tspan fill={C.teal}>Cron</tspan> → job tracked?{'   '}
+        <tspan fill={C.purple}>CLI</tspan> → run context?{'   '}
+        <tspan fill={C.red}>Gone &gt; 5 min → LOST</tspan>
+      </text>
+      <text x="24" y="192" fill={C.faint} fontSize="7.5" fontFamily={mono}>Terminal records kept 7 days, then pruned</text>
 
-      {/* Managed vs Mirrored */}
-      <rect x="10" y="310" width="240" height="60" rx="8" fill={C.cyanBg} stroke={C.cyanBorder} strokeWidth="1" />
-      <text x="26" y="330" fill={C.cyan} fontSize="10" fontWeight="700" fontFamily={mono}>MANAGED MODE</text>
-      <text x="26" y="348" fill={C.dim} fontSize="8.5" fontFamily={sans}>System controls task lifecycle.</text>
-      <text x="26" y="360" fill={C.dim} fontSize="8.5" fontFamily={sans}>Queue → assign → track → cleanup</text>
+      {/* Two orchestration modes */}
+      <text x="10" y="226" fill={C.white} fontSize="9" fontWeight="700" fontFamily={mono}>TWO ORCHESTRATION MODES</text>
 
-      <rect x="270" y="310" width="240" height="60" rx="8" fill={C.orangeBg} stroke={C.orangeBorder} strokeWidth="1" />
-      <text x="286" y="330" fill={C.orange} fontSize="10" fontWeight="700" fontFamily={mono}>MIRRORED MODE</text>
-      <text x="286" y="348" fill={C.dim} fontSize="8.5" fontFamily={sans}>External system drives lifecycle.</text>
-      <text x="286" y="360" fill={C.dim} fontSize="8.5" fontFamily={sans}>Reflects external state into tasks DB</text>
+      <rect x="10" y="238" width="244" height="86" rx="8" fill={C.cyanBg} stroke={C.cyanBorder} strokeWidth="1" />
+      <text x="24" y="258" fill={C.cyan} fontSize="9" fontWeight="700" fontFamily={mono}>MANAGED</text>
+      <text x="24" y="274" fill={C.dim} fontSize="8" fontFamily={sans}>Flow owns the lifecycle end-to-end.</text>
+      <text x="24" y="290" fill={C.dim} fontSize="8" fontFamily={sans}>Create → assign → track → cleanup</text>
+      <text x="24" y="306" fill={C.faint} fontSize="7.5" fontFamily={mono}>e.g. multi-step report flow</text>
+
+      <rect x="266" y="238" width="244" height="86" rx="8" fill={C.orangeBg} stroke={C.orangeBorder} strokeWidth="1" />
+      <text x="280" y="258" fill={C.orange} fontSize="9" fontWeight="700" fontFamily={mono}>MIRRORED</text>
+      <text x="280" y="274" fill={C.dim} fontSize="8" fontFamily={sans}>Flow observes external tasks.</text>
+      <text x="280" y="290" fill={C.dim} fontSize="8" fontFamily={sans}>Cron/CLI creates, flow syncs state</text>
+      <text x="280" y="306" fill={C.faint} fontSize="7.5" fontFamily={mono}>e.g. 3 cron jobs as "morning ops"</text>
     </svg>
   );
 }

@@ -280,12 +280,21 @@ function renderBody(slide) {
     case 'closing':
       return (
         <div className="flex flex-1 flex-col justify-center gap-6">
-          {renderPanels(slide.cards, 'lg:grid-cols-3')}
-          {slide.closing ? (
-            <p className="max-w-[26ch] text-balance text-xl font-semibold leading-tight text-white/95 sm:text-3xl">
-              {slide.closing}
-            </p>
-          ) : null}
+          <div className={`grid gap-6 ${slide.visual?.src ? 'lg:grid-cols-[1fr_auto]' : ''} items-center`}>
+            <div className="space-y-6">
+              {renderPanels(slide.cards, 'lg:grid-cols-3')}
+              {slide.closing ? (
+                <p className="max-w-[26ch] text-balance text-xl font-semibold leading-tight text-white/95 sm:text-3xl">
+                  {slide.closing}
+                </p>
+              ) : null}
+            </div>
+            {slide.visual?.src ? (
+              <div className="flex items-center justify-center">
+                <VisualCard visual={slide.visual} />
+              </div>
+            ) : null}
+          </div>
         </div>
       );
     default:
