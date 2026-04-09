@@ -465,10 +465,10 @@ export const slides = [
       },
     ),
     steps: [
-      { title: 'Every 30 min', body: 'Periodic check for outstanding work + notifications' },
-      { title: 'Main session', body: 'Runs with full conversation history', accent: 'focus' },
-      { title: 'Smart skip', body: 'Skips API call entirely if HEARTBEAT.md empty or no tasks due' },
-      { title: 'Configurable', body: 'openclaw.json defines intervals, hours, delivery', accent: 'cool' },
+      { title: 'Why HEARTBEAT.md?', body: 'The agent acts without you talking to it. And because it\'s a file, the agent can edit it itself.' },
+      { title: 'Full context', body: '"Check on that thing from earlier" works because it runs on the main session with full history.', accent: 'focus' },
+      { title: 'Smart skip', body: 'Preflight checks avoid wasting an LLM call. Empty file or quiet task list = no API cost.' },
+      { title: 'HEARTBEAT_OK', body: 'Model decides nothing needs attention? Replies with one token. Channel stays quiet.', accent: 'cool' },
     ],
   },
   {
@@ -507,7 +507,7 @@ export const slides = [
       },
     ),
     steps: [
-      { title: 'SOUL.md', body: 'Who the agent IS — personality, values, constraints' },
+      { title: 'SOUL.md', body: 'Who the agent IS. Personality, values, constraints' },
       { title: 'AGENTS.md', body: 'Behavioral guidelines and role definitions', accent: 'focus' },
       { title: 'HEARTBEAT.md', body: 'Periodic task schedules and check-in config' },
       { title: 'MEMORY.md', body: 'Curated long-term context the agent learns', accent: 'cool' },
@@ -558,7 +558,7 @@ export const slides = [
       { title: 'Bootstrap files', body: 'SOUL, AGENTS, IDENTITY, TOOLS, MEMORY' },
       { title: 'Assembler', body: 'Merges all sections into one system prompt', accent: 'focus' },
       { title: 'Session history', body: 'Full transcript, compacted on overflow' },
-      { title: 'Token budget', body: '20K/file, 150K total — auto-prune', accent: 'cool' },
+      { title: 'Token budget', body: '20K/file, 150K total. Auto-prune', accent: 'cool' },
     ],
   },
   {
